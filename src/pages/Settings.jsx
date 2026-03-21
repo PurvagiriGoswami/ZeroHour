@@ -31,7 +31,7 @@ export default function Settings() {
     const d = JSON.stringify({ syl, mocks, logs, habs, revision, vocab, pyqlog, pomoSessions, quizResults, plannerTasks, settings }, null, 2)
     const el = document.createElement('a')
     el.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(d)
-    el.download = `DefenceCentre_backup_${new Date().toISOString().split('T')[0]}.json`
+    el.download = `ZeroHour_backup__${new Date().toISOString().split('T')[0]}.json`
     el.click()
     toast('📁 JSON backup downloaded', 'ok')
   }
@@ -150,7 +150,7 @@ export default function Settings() {
           </span>
         </div>
         <div style={{fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'var(--text4)', lineHeight:2.2}}>
-          <div>PROJECT: <span style={{color:'var(--text2)'}}>defence-centre-ai</span></div>
+          <div>PROJECT: <span style={{color:'var(--green)'}}>ZeroHour-AI-System</span></div>
           <div>API KEYS: <span style={{color:'var(--green)'}}>🔒 HIDDEN</span></div>
           <div>DEVICES: <span style={{color:'var(--text2)'}}>laptop · iPhone · iPad</span></div>
           <div>AUTO-SYNC: <span style={{color:'var(--green)'}}>enabled — 1.2s after every save</span></div>
@@ -179,11 +179,38 @@ export default function Settings() {
           },'DELETE ALL', true)}>⚠ RESET ENTIRE APP</button>
       </div>
 
+      {/* About ZeroHour */}
+      <div className="card" style={{borderLeft: '4px solid var(--green)', background: 'linear-gradient(90deg, var(--gdim), transparent)'}}>
+        <div className="card-title" style={{color:'var(--green)', fontSize: 16}}>🛡 ABOUT ZEROHOUR</div>
+        <div style={{fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, marginBottom: 16}}>
+          ZeroHour is a next-generation AI-powered preparation system designed specifically for CDS, NDA, and AFCAT aspirants.
+          It combines smart analytics, vocabulary intelligence, weakness tracking, and adaptive revision to help users maximize performance at the most critical moment — the <strong>Zero Hour</strong>.
+        </div>
+        <div className="g2">
+          <div style={{display:'flex', alignItems:'center', gap: 10}}>
+            <span style={{color:'var(--green)'}}>✦</span>
+            <span style={{fontSize: 12, color:'var(--text3)'}}>Smart Analytics</span>
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap: 10}}>
+            <span style={{color:'var(--green)'}}>✦</span>
+            <span style={{fontSize: 12, color:'var(--text3)'}}>Vocab Intelligence</span>
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap: 10}}>
+            <span style={{color:'var(--green)'}}>✦</span>
+            <span style={{fontSize: 12, color:'var(--text3)'}}>Weakness Tracking</span>
+          </div>
+          <div style={{display:'flex', alignItems:'center', gap: 10}}>
+            <span style={{color:'var(--green)'}}>✦</span>
+            <span style={{fontSize: 12, color:'var(--text3)'}}>Adaptive Revision</span>
+          </div>
+        </div>
+      </div>
+
       {/* App Info */}
       <div className="card">
         <div className="card-title" style={{color:'var(--text4)'}}>ℹ APP INFO</div>
         <div style={{fontFamily:"'Share Tech Mono',monospace", fontSize:9, color:'var(--text5)', lineHeight:2.2}}>
-          <div style={{color:'var(--text3)'}}>VERSION: 6.0 — DefenceCentre AI</div>
+          <div style={{color:'var(--text3)'}}>VERSION: 1.0.0 — ZeroHour</div>
           <div>STACK: React + Vite + Zustand + Recharts + Tailwind</div>
           <div>STORAGE: Firebase (cloud) + localStorage (offline)</div>
           <div>EXPORT: SheetJS (Excel .xlsx)</div>

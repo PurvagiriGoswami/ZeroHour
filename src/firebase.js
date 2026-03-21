@@ -18,8 +18,8 @@ let app = null
 let db = null
 
 if (hasConfig) {
-  const existing = getApps().find(a => a.name === 'defence-cmd')
-  app = existing || initializeApp(firebaseConfig, 'defence-cmd')
+  const existing = getApps().find(a => a.name === 'zerohour-app')
+  app = existing || initializeApp(firebaseConfig, 'zerohour-app')
   db = getFirestore(app)
 }
 

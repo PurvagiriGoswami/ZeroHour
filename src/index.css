@@ -10,27 +10,27 @@
 
 :root {
   --base-font-size: 16px;
-  --bg:     #030703;
-  --bg2:    #060c06;
-  --bg3:    #0a140a;
-  --bg4:    #050a05;
-  --border: #1a3a1a;
-  --border2:#0d1f0d;
-  --border3:#0a1a0a;
-  --green:  #39ff14;
-  --gold:   #ffd700;
-  --cyan:   #00d4ff;
-  --red:    #ff3333;
-  --purple: #bf80ff;
-  --text:   #e8f5e9;
-  --text2:  #a5d6a7;
-  --text3:  #81c784;
-  --text4:  #66bb6a;
-  --text5:  #4caf50;
-  --gdim:   #0d3a0d;
-  --yldim:  #2a1f00;
-  --cdim:   #001a2a;
-  --rdim:   #2a0a0a;
+  --bg:     #0f172a; /* Deep Dark */
+  --bg2:    #1e293b;
+  --bg3:    #334155;
+  --bg4:    #0f172a;
+  --border: #1e293b;
+  --border2:#334155;
+  --border3:#1e293b;
+  --green:  #00ffc3; /* ZeroHour Cyan/Teal */
+  --gold:   #facc15;
+  --cyan:   #22d3ee;
+  --red:    #f43f5e;
+  --purple: #a855f7;
+  --text:   #f8fafc;
+  --text2:  #cbd5e1;
+  --text3:  #94a3b8;
+  --text4:  #64748b;
+  --text5:  #475569;
+  --gdim:   rgba(0, 255, 195, 0.1);
+  --yldim:  rgba(250, 204, 21, 0.1);
+  --cdim:   rgba(34, 211, 238, 0.1);
+  --rdim:   rgba(244, 63, 94, 0.1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top:    env(safe-area-inset-top, 0px);
   --hdr-h: 60px;
@@ -113,6 +113,29 @@ select {
 .pop-in   { animation: popIn .25s cubic-bezier(.34,1.56,.64,1) forwards; }
 .pulsing  { animation: pulse 1s infinite; }
 
+/* ── Utilities ── */
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.7) !important;
+  border-color: rgba(0, 255, 195, 0.1) !important;
+}
+.text-glow {
+  text-shadow: 0 0 10px var(--green);
+}
+.command-glow {
+  box-shadow: 0 0 15px rgba(0, 255, 195, 0.2);
+}
+.digital-clock {
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+  color: var(--green);
+  text-shadow: 0 0 8px rgba(0, 255, 195, 0.4);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 255, 195, 0.1);
+}
+
 /* ── Layout shell ── */
 .app-shell {
   display: flex;
@@ -142,48 +165,81 @@ select {
 /* ── Sidebar Navigation ── */
 .sidebar-nav {
   width: var(--sidebar-w);
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
+  height: 100%;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(0, 255, 195, 0.1);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  padding: 6px 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 10;
 }
+.sidebar-nav.collapsed {
+  width: 70px;
+}
+.sidebar-nav.collapsed .sidebar-label,
+.sidebar-nav.collapsed .sidebar-header-text {
+  display: none;
+}
+.sidebar-nav.collapsed .sidebar-item {
+  justify-content: center;
+  padding: 12px 0;
+}
+.sidebar-nav.collapsed .sidebar-icon {
+  font-size: 20px;
+}
+
 .sidebar-nav::-webkit-scrollbar { display: none; }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border: none;
-  border-left: 3px solid transparent;
+  position: relative;
   background: transparent;
   cursor: pointer;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1.2px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
   color: var(--text4);
-  transition: all .15s;
+  transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   text-align: left;
 }
+.sidebar-item::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 15%; bottom: 15%;
+  width: 3px;
+  background: var(--green);
+  opacity: 0;
+  transition: all .2s;
+  box-shadow: 0 0 10px var(--green);
+}
 .sidebar-item:hover {
   color: var(--text2);
-  background: var(--bg3);
-  border-left-color: var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  padding-left: 20px;
 }
 .sidebar-item.active {
   color: var(--green);
-  background: var(--bg3);
-  border-left-color: var(--green);
+  background: rgba(0, 255, 195, 0.05);
+  font-weight: bold;
+}
+.sidebar-item.active::after {
+  opacity: 1;
 }
 .sidebar-item.active .sidebar-icon {
-  filter: drop-shadow(0 0 4px var(--green));
+  filter: drop-shadow(0 0 8px var(--green));
+  transform: scale(1.1);
 }
 
 .sidebar-icon {
@@ -348,6 +404,17 @@ select {
   max-width: 100%;
   margin: 0 auto;
   padding-bottom: 24px;
+}
+
+/* ── Footer ── */
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+@media (max-width: 767px) {
+  .footer-grid { grid-template-columns: 1fr; gap: 16px; }
 }
 
 /* ── Sync dot ── */

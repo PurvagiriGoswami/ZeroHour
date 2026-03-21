@@ -80,7 +80,7 @@ export function exportToExcel({ vocab, quizResults, plannerTasks, revision, syl 
   }
 
   // Download
-  const filename = `DefenceCentre_Backup_${formatDate(new Date())}.xlsx`
+  const filename = `ZeroHour_Excel_Backup_${formatDate(new Date())}.xlsx`
   XLSX.writeFile(wb, filename)
   return filename
 }

@@ -1,118 +1,33 @@
-# 🎖 Defence Exam Command Centre
+# ZeroHour
+
+AI-powered Defence Exam Preparation System
 
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
-![Tech](https://img.shields.io/badge/Tech-Vanilla_JS-yellow?style=for-the-badge)
+![Tech](https://img.shields.io/badge/Tech-React_Vite-cyan?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Web_App-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Educational-lightgrey?style=for-the-badge)
 
-> 🚀 A **military-style productivity system** for CDS, AFCAT, and defence aspirants — combining tracking, analytics, and discipline into one powerful dashboard.
+> 🚀 **"Prepare Smart. Perform at Zero Hour."**
+> A production-grade AI-powered preparation system designed specifically for CDS, NDA, and AFCAT aspirants.
 
 ---
 
 ## 🧠 Overview
 
-**Defence Exam Command Centre** is an **all-in-one preparation system** designed to help aspirants:
-
-* Track syllabus 📚
-* Analyze performance 📊
-* Build discipline 🔥
-* Improve accuracy 🎯
-* Master revision 🔄
-
-It works like a **personal command terminal for exam success**.
+**ZeroHour** is a next-generation study platform that combines data-driven insights with military discipline. It's built to ensure that when the most critical moment arrives—the Zero Hour—you are prepared to perform at your peak.
 
 ---
 
-## ✨ Key Features
+## 🚀 Key Features
 
-### 📊 Command Dashboard
-
-* Real-time progress tracking
-* Subject-wise completion stats
-* Mock performance graphs
-* Exam countdown timers
-
----
-
-### 📅 Daily Planner
-
-* Daily study logging
-* Energy tracking system
-* Structured subject input
-* Notes + planning
-
----
-
-### 🔥 Habit Tracker
-
-Track discipline like a pro:
-
-* Morning study 📖
-* Night study 📚
-* PYQ practice ✏️
-* Gym 💪
-* Sleep discipline 🌙
-
----
-
-### 📚 Syllabus Tracker
-
-* Topic → Subtopic breakdown
-* Priority levels (H/M/L)
-* Progress tracking (visual)
-
----
-
-### 📝 Mock Analysis
-
-* Section-wise scoring
-* Error classification
-* Weak area identification
-* Trend tracking
-
----
-
-### 🔴 Error Tracker
-
-* Categorize mistakes:
-
-  * Concept Gap
-  * Silly Mistake
-  * Time Pressure
-* Track unresolved errors
-
----
-
-### 🔄 Smart Revision System
-
-* Built-in spaced repetition:
-
-  * R1 → Initial learning
-  * R2 → After 21 days
-  * R3 → After 14 days
-* Auto revision alerts
-
----
-
-### ⏱ Pomodoro Timer
-
-* Custom work/break cycles
-* Productivity sessions
-
----
-
-### 📖 Vocabulary + 📐 Formula Manager
-
-* Store important concepts
-* Mark as learned
-* Filter & revise easily
-
----
-
-### 📊 Score Calculator
-
-* CDS & AFCAT marking logic
-* Instant performance evaluation
+*   **Smart Dashboard**: Real-time progress tracking with subject-wise completion stats and mock performance graphs.
+*   **AI Vocabulary Engine**: Intelligent word discovery, tracking, and revision system.
+*   **Weekly Quiz System**: Adaptive testing framework designed to push your limits.
+*   **Performance Analytics**: Deep-dive into your data to identify trends and optimize your study strategy.
+*   **Spaced Revision System**: Built-in scientific repetition cycles (R1, R2, R3) for maximum retention.
+*   **Weakness Tracking**: Categorize mistakes (Concept Gap, Silly Mistake, Time Pressure) to conquer difficult topics.
+*   **Command Planner**: Integrated daily study logging with energy tracking and structured subject planning.
+*   **Habit Tracker**: Discipline-focused module for tracking study hours, physical training, and sleep cycles.
 
 ---
 
@@ -120,129 +35,41 @@ Track discipline like a pro:
 
 | Layer        | Technology              |
 | ------------ | ----------------------- |
-| Frontend     | HTML, CSS, JavaScript   |
-| Storage      | LocalStorage            |
-| Charts       | Custom SVG              |
-| Architecture | Single Page Application |
+| Frontend     | React + Vite            |
+| State        | Zustand                 |
+| Database     | Firebase (Cloud Sync)   |
+| Charts       | Recharts                |
+| Styling      | Tailwind CSS / Vanilla  |
 
 ---
 
 ## 📁 Project Structure
 
 ```bash
-📦 Defence-Exam-Command-Centre
-├── index.html                  # Main app
-├── defence_command_v3.html     # Advanced UI version
-├── README.md
+📦 ZeroHour
+├── src/ 
+│   ├── components/      # UI Components (Header, Nav, Modal, etc.)
+│   ├── pages/           # Feature Modules (Dashboard, Vocab, Quiz, etc.)
+│   ├── store/           # Global State Management (Zustand)
+│   ├── services/        # External Services (Firebase, Excel)
+│   ├── utils/           # Helper Functions & Constants
+│   └── App.jsx          # Main Application Shell
+├── index.html           # Entry Point
+└── package.json         # Dependencies & Scripts
 ```
 
 ---
 
-## ⚙️ How to Run
+## 👨‍💻 Author
 
-```bash
-# Step 1: Download project
-# Step 2: Open file
-
-index.html
-# OR
-defence_command_v3.html
-```
-
-✔ Works offline
-✔ No installation required
-✔ Runs in any browser
+**Purvagiri Goswami**
 
 ---
 
-## 🧩 How It Works
+## 📄 License
 
-* Uses **Single Page Architecture**
-* Navigation via tabs (no reload)
-* Data stored in browser:
-
-```js
-localStorage
-```
-
-### Core Data Objects
-
-* `syl` → syllabus tracking
-* `mocks` → mock tests
-* `logs` → daily records
-* `errs` → error tracking
-* `revision` → revision system
+This project is for educational and personal use. All rights reserved.
 
 ---
 
-## 🎨 UI Design
-
-* Military-themed dark interface 🟢
-* Neon terminal aesthetics
-* Responsive (mobile + desktop)
-* Smooth animations (v3 version)
-
----
-
-## 🚧 Future Roadmap
-
-* 📱 Android App (WebView / React Native)
-* ☁ Cloud Sync (Firebase)
-* 🤖 AI Study Planner
-* 📈 Rank Predictor
-* 🎯 Smart Task Generator
-* 🔐 User Authentication
-
----
-
-## ⚠️ Limitations
-
-* No cloud backup (local storage only)
-* Single-device usage
-* No login system
-
----
-
-## 🏆 Ideal For
-
-* CDS Aspirants
-* AFCAT Aspirants
-* Defence preparation students
-* Self-disciplined learners
-
----
-
-## 👤 Author
-
-**Purva / CreaPhillia**
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-* Fork the repo
-* Improve UI/UX
-* Add features
-* Convert into full app
-
----
-
-## ⭐ Support
-
-If you like this project:
-
-👉 Star ⭐ the repository
-👉 Share with other aspirants
-
----
-
-## 📜 License
-
-Free for educational use.
-
----
-
-🔥 **“Train like a soldier. Study like a strategist.”**
-# ZeroHour
+🔥 **"Prepare Smart. Perform at Zero Hour."**
