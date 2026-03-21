@@ -1,8 +1,4 @@
-<div align="center">
-  <img src="[file:///c:/Users/purvg/Downloads/cds%20with%20left%20side%20menu/public/assets/logo-full.png](https://raw.githubusercontent.com/PurvagiriGoswami/ZeroHour/34c5e45dc32fd15a17ee5994de09bffe6ba2e345/zerohour-logo-pack/ZeroHour_Main_logo.svg)" width="400" alt="ZeroHour Logo">
-</div>
 
-<div align="center">
 
 ```
 ███████╗███████╗██████╗  ██████╗ ██╗  ██╗ ██████╗ ██╗   ██╗██████╗
