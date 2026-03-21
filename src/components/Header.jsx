@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store'
+import { formatDate } from '../utils/dateUtils'
 
 export default function Header() {
   const { state } = useStore()
@@ -11,7 +12,7 @@ export default function Header() {
     return ()=>clearInterval(t)
   },[])
 
-  const dateStr = time.toLocaleDateString('en-IN',{day:'2-digit',month:'short'}).toUpperCase()
+  const dateStr = formatDate(time)
   const timeStr = time.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
 
   return (
@@ -26,14 +27,14 @@ export default function Header() {
     }}>
       <div>
         <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:20,color:'var(--green)',letterSpacing:2,lineHeight:1.3}}>
-          🎖 DEFENCE COMMAND CENTRE
+          🎖 DEFENCECENTRE AI
         </div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:10}}>
         <div className={`sync-dot ${syncStatus}`} title={syncStatus==='ok'?'Synced ✓':syncStatus==='syncing'?'Syncing...':'Sync error'}/>
         <div style={{textAlign:'right',fontFamily:"'Share Tech Mono',monospace",fontSize:20,color:'var(--red)'}}>
           <div>{dateStr}</div>
-          <div style={{fontSize:20,color:'var(--blue)'}}>{timeStr}</div>
+          <div style={{fontSize:20,color:'var(--blue, var(--cyan))' }}>{timeStr}</div>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -8,6 +9,7 @@
 }
 
 :root {
+  --base-font-size: 16px;
   --bg:     #030703;
   --bg2:    #060c06;
   --bg3:    #0a140a;
@@ -20,22 +22,26 @@
   --cyan:   #00d4ff;
   --red:    #ff3333;
   --purple: #bf80ff;
-  --text:   #c8e6c9;
-  --text2:  #7ab07a;
-  --text3:  #4a7a4a;
-  --text4:  #3a5a3a;
-  --text5:  #2a5a2a;
+  --text:   #e8f5e9;
+  --text2:  #a5d6a7;
+  --text3:  #81c784;
+  --text4:  #66bb6a;
+  --text5:  #4caf50;
   --gdim:   #0d3a0d;
   --yldim:  #2a1f00;
   --cdim:   #001a2a;
   --rdim:   #2a0a0a;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top:    env(safe-area-inset-top, 0px);
-  --hdr-h: 52px;
-  --nav-h: 38px;
-  --mob-h: 62px;
-  --sidebar-w: 180px;
-  --sidebar-w-tablet: 56px;
+  --hdr-h: 60px;
+  --nav-h: 50px;
+  --mob-h: 70px;
+  --sidebar-w: 200px;
+  --sidebar-w-tablet: 64px;
+}
+
+html {
+  font-size: var(--base-font-size);
 }
 
 html, body, #root {
@@ -199,34 +205,38 @@ select {
 .card {
   background: var(--bg3);
   border: 1px solid var(--border);
-  border-radius: 5px;
-  padding: 14px;
-  margin-bottom: 12px;
-  transition: border-color .2s;
+  border-radius: 1rem;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all .2s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
 }
-.card:hover { border-color: #1f471f; }
+.card:hover { 
+  border-color: var(--green); 
+  box-shadow: 0 10px 15px -3px rgba(30, 80, 30, 0.2), 0 4px 6px -4px rgba(30, 80, 30, 0.1); 
+}
 
 .card-title {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 2px;
   color: var(--green);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .inp {
   width: 100%;
   background: var(--bg4);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 9px 10px;
+  border-radius: 0.5rem;
+  padding: 12px 14px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 16px;
   transition: border-color .15s;
 }
 .inp:focus { border-color: var(--green) !important; box-shadow: 0 0 0 1px #39ff1422; }
@@ -258,25 +268,27 @@ select {
 }
 
 .btn {
-  padding: 9px 14px;
+  padding: 12px 20px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 0.5rem;
   cursor: pointer;
   font-family: 'Share Tech Mono', monospace;
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 600;
   letter-spacing: 1.5px;
   background: var(--bg4);
-  color: var(--text3);
-  transition: all .15s;
+  color: var(--text2);
+  transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 38px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
 }
-.btn:hover  { border-color: var(--green); color: var(--green); background: var(--bg3); }
-.btn:active { transform: scale(.96); }
+.btn:hover  { border-color: var(--green); color: var(--green); background: var(--bg3); filter: brightness(1.2); }
+.btn:active { transform: scale(.95); filter: brightness(0.9); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
 
 .btn-g { background: var(--gdim)  !important; border-color: var(--green)  !important; color: var(--green)  !important; }
 .btn-g:hover { background: #144a14 !important; }
@@ -289,11 +301,12 @@ select {
 
 .tag {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 8px;
-  padding: 2px 6px;
-  border-radius: 2px;
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
   display: inline-block;
   white-space: nowrap;
+  font-weight: 600;
 }
 
 .pb { height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; margin: 3px 0; }

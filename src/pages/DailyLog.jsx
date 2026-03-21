@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
-import { DAILY_PLANS } from '../data'
 import { td } from '../utils'
 
 const empty = () => ({ date:td(),wake:'',sleep:'',energy:3,maths:'',eng:'',gs:'',morning:'',night:'',pyqs:'',score:'',gym:false,mock:false,rev:false,notes:'',plan:'' })
@@ -18,7 +17,9 @@ export default function DailyLog() {
   const setV = (k,v) => setForm(p=>({...p,[k]:v}))
 
   const existing = logs.find(l=>l.date===f.date)
-  const plan = DAILY_PLANS[f.date] || 'No specific plan for this date — set your own focus.'
+  const todayTasks = state.plannerTasks?.filter(t => t.date === f.date) || []
+  const planStr = todayTasks.length > 0 ? todayTasks.map(t => `${t.subject}: ${t.topic}`).join(' | ') : 'No specific plan for this date — set your own focus.'
+  const plan = planStr
 
   function saveLog() {
     const entry = {...f, date:f.date||td()}

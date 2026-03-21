@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useStore } from './store'
+import { useAppStore } from './store/useStore'
 import Header from './components/Header'
 import { SidebarNav, MobileNav } from './components/Nav'
 import Dashboard  from './pages/Dashboard'
@@ -8,36 +9,50 @@ import Habits     from './pages/Habits'
 import Syllabus   from './pages/Syllabus'
 import Mocks      from './pages/Mocks'
 import PYQLog     from './pages/PYQLog'
-import Errors     from './pages/Errors'
 import Revision   from './pages/Revision'
 import Pomodoro   from './pages/Pomodoro'
 import Vocab      from './pages/Vocab'
-import Formulas   from './pages/Formulas'
-import Calculator from './pages/Calculator'
+import Quiz       from './pages/Quiz'
+import Planner    from './pages/Planner'
+import Analytics  from './pages/Analytics'
 import Settings   from './pages/Settings'
 import { TABS } from './data'
 
 const PAGES = {
-  dash:     Dashboard,
-  daily:    DailyLog,
-  habits:   Habits,
-  syl:      Syllabus,
-  mocks:    Mocks,
-  pyq:      PYQLog,
-  errors:   Errors,
-  rev:      Revision,
-  pomo:     Pomodoro,
-  vocab:    Vocab,
-  formulas: Formulas,
-  calc:     Calculator,
-  settings: Settings,
+  dash:      Dashboard,
+  daily:     DailyLog,
+  habits:    Habits,
+  syl:       Syllabus,
+  mocks:     Mocks,
+  pyq:       PYQLog,
+  rev:       Revision,
+  pomo:      Pomodoro,
+  vocab:     Vocab,
+  quiz:      Quiz,
+  planner:   Planner,
+  analytics: Analytics,
+  settings:  Settings,
 }
 
 export default function App() {
-  const { state, act } = useStore()
+  const { state } = useStore()
+  const { settings } = state
+  const initFirebase = useAppStore(s => s.initFirebase)
   const [tab, setTab] = useState('dash')
   const touchStart = useRef({x:0,y:0})
   const scrollRef = useRef(null)
+
+  // Apply Preferences
+  const fontMap = { small: '14px', medium: '16px', large: '18px' }
+  const globalStyles = {
+    '--green': settings.accentColor || '#39ff14',
+    '--base-font-size': fontMap[settings.fontSize] || '16px',
+    backgroundColor: settings.theme === 'light' ? '#ffffff' : 'var(--bg)',
+    color: settings.theme === 'light' ? '#000000' : 'var(--text)'
+  }
+
+  // Initialize Firebase on mount
+  useEffect(() => { initFirebase() }, [initFirebase])
 
   const navigate = useCallback((id)=>{ setTab(id); if(scrollRef.current) scrollRef.current.scrollTop=0 },[])
 
@@ -45,7 +60,7 @@ export default function App() {
   useEffect(()=>{
     const onKey = e => {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT') return
-      const map={'1':'dash','2':'daily','3':'habits','4':'syl','5':'mocks','6':'pyq','7':'errors','8':'rev','9':'pomo','0':'vocab'}
+      const map={'1':'dash','2':'daily','3':'habits','4':'syl','5':'mocks','6':'pyq','7':'rev','8':'pomo','9':'vocab','0':'quiz'}
       if(map[e.key]){ navigate(map[e.key]); e.preventDefault() }
     }
     window.addEventListener('keydown', onKey)
@@ -67,7 +82,7 @@ export default function App() {
   const PageComponent = PAGES[tab] || Dashboard
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={globalStyles}>
       <Header/>
       <div className="app-body">
         {/* Sidebar nav — hidden on mobile via CSS */}

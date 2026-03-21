@@ -1,12 +1,16 @@
 import { useMemo } from 'react'
 import { useStore } from '../store'
+import { useAppStore } from '../store/useStore'
 import { EXAMS, SUBC, SUBTOTALS, HABITS } from '../data'
-import { daysUntil, calcStreak, getRevDue, clamp } from '../utils'
+import { daysUntil, calcStreak, clamp, formatDate } from '../utils/dateUtils'
+import { getWeaknessLevel, getOverallAccuracy } from '../utils/weaknessEngine'
+import { getDueVocab } from '../utils/spacedRepetition'
 import { DonutChart, LineChart, BarChart } from '../Charts'
 
 export default function Dashboard({ onNav }) {
-  const { state, act } = useStore()
-  const { syl, mocks, logs, habs, errs, revision, settings } = state
+  const { state } = useStore()
+  const { syl, mocks, logs, habs, revision, vocab, settings, quizResults, plannerTasks } = state
+  const revisionCycles = useAppStore(s => s.revisionCycles)
 
   const subs = ['Maths','English','GS','AFCAT']
   const today = new Date().toISOString().split('T')[0]
@@ -16,8 +20,15 @@ export default function Dashboard({ onNav }) {
   const best = scores.length ? Math.max(...scores) : null
   const streak = useMemo(() => calcStreak(logs), [logs])
   const totalDone = syl.filter(t => t.status==='Done').length
-  const unfix = errs.filter(e => !e.resolved).length
 
+  // Quiz performance
+  const overallAcc = getOverallAccuracy(quizResults)
+  const overallWeakness = getWeaknessLevel(overallAcc)
+
+  // Due vocab
+  const dueVocabCount = useMemo(() => getDueVocab(vocab, revisionCycles).length, [vocab, revisionCycles])
+
+  // Last 7 days habits
   const last7 = useMemo(() => Array.from({length:7},(_,i)=>{
     const d=new Date(); d.setDate(d.getDate()-(6-i))
     const ds=d.toISOString().split('T')[0]
@@ -25,49 +36,30 @@ export default function Dashboard({ onNav }) {
     return {label:['S','M','T','W','T','F','S'][d.getDay()],value:HABITS.filter(h=>e[h.i]).length,max:6}
   }), [habs])
 
-  const errBySubj = useMemo(()=>[
-    {label:'Math', value:errs.filter(e=>e.subject==='Maths').length,     max:Math.max(1,errs.length)},
-    {label:'Eng',  value:errs.filter(e=>e.subject==='English').length,    max:Math.max(1,errs.length)},
-    {label:'GS',   value:errs.filter(e=>e.subject==='GS').length,         max:Math.max(1,errs.length)},
-    {label:'AFCAT',value:errs.filter(e=>e.subject==='AFCAT Reasoning').length, max:Math.max(1,errs.length)},
-  ], [errs])
-
+  // Revision due topics
   const dueTopics = useMemo(() => {
     const arr = []
     syl.filter(t=>t.status==='Done').forEach(t=>{
       const rv = revision.find(r=>r.topicId===t.id)||{}
-      const due = getRevDue(t,rv)
-      if(due) arr.push({...t,...due,topicId:t.id})
-    })
-    return arr.sort((a,b)=>(b.overdueBy||0)-(a.overdueBy||0))
-  }, [syl, revision])
-
-  const habToday = habs.find(h=>h.date===today)||{}
-  const focus = habToday.focus||3
-  const logToday = logs.find(l=>l.date===today)||{}
-  const energy = logToday.energy||3
-  const slots = clamp(3+Math.round(((energy+focus)/2)-3), 3, 7)
-
-  const planTasks = useMemo(()=>{
-    const tasks = dueTopics.slice(0,slots).map(d=>({type:'rev',...d}))
-    if(tasks.length < slots){
-      const errBySub={Maths:0,English:0,GS:0,AFCAT:0}
-      errs.filter(e=>!e.resolved).forEach(e=>{
-        if(e.subject==='Maths')errBySub.Maths++
-        else if(e.subject==='English')errBySub.English++
-        else if(e.subject==='GS')errBySub.GS++
-        else errBySub.AFCAT++
-      })
-      const scored = syl.filter(t=>t.status!=='Done')
-        .map(t=>({t, score:(t.pri==='H'?3:t.pri==='M'?2:1)*10+(5-(Number(t.conf)||0))+(errBySub[t.sub]||0)*.6+(t.status==='Not Started'?2:1)}))
-        .sort((a,b)=>b.score-a.score).map(x=>x.t)
-      for(const t of scored){
-        if(tasks.length>=slots)break
-        tasks.push({type:'study',topicId:t.id,topic:t.topic,sub:t.sub,pri:t.pri,conf:t.conf||0})
+      for (let i = 0; i < revisionCycles.length; i++) {
+        if (!rv[`r${i+1}Done`]) {
+          const prevDate = i > 0 ? rv[`r${i}Date`] : (rv.r1Date || t.lastStudied)
+          if (prevDate) {
+            const elapsed = Math.floor((Date.now() - new Date(prevDate).getTime()) / 86400000)
+            if (elapsed >= revisionCycles[i].days) {
+              arr.push({...t, topicId:t.id, round:`R${i+1}`, daysOverdue: elapsed - revisionCycles[i].days})
+            }
+          }
+          break
+        }
       }
-    }
-    return tasks
-  }, [dueTopics, syl, errs, slots])
+    })
+    return arr.sort((a,b)=>(b.daysOverdue||0)-(a.daysOverdue||0))
+  }, [syl, revision, revisionCycles])
+
+  // Today's planner tasks
+  const todayPlan = plannerTasks.filter(t => t.date === today)
+  const planDone = todayPlan.filter(t => t.completed).length
 
   const allSubDone = syl.reduce((a,t)=>a+Object.values(t.done||{}).filter(Boolean).length, 0)
   const allSubTotal = syl.reduce((a,t)=>a+t.subs.length, 0)
@@ -81,7 +73,7 @@ export default function Dashboard({ onNav }) {
           const urg = d!==null && d<=7
           return (
             <div key={ex.i} className="card" style={{borderColor:`${ex.c}22`,background:'#050a05',textAlign:'center',cursor:'pointer',padding:'12px 8px',marginBottom:0}}
-              onClick={()=>onNav('calc')}>
+              onClick={()=>onNav('analytics')}>
               <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:d!==null?28:18,color:urg?'#ff3333':ex.c,lineHeight:1,animation:urg?'pulse 1s infinite':'none'}}>
                 {d!==null ? d : 'TBD'}
               </div>
@@ -134,7 +126,7 @@ export default function Dashboard({ onNav }) {
           })}
         </div>
 
-        {/* Score Trend */}
+        {/* Score Trend + Live Stats */}
         <div className="card">
           <div className="card-title">📈 SCORE TREND <span style={{color:'var(--text3)',fontSize:9}}>{avg?`AVG:${avg}`:''}</span></div>
           <LineChart data={scores} color="#39ff14" target={settings.targetIMA} />
@@ -156,32 +148,19 @@ export default function Dashboard({ onNav }) {
       </div>
 
       <div className="g2">
-        {/* Error Analysis */}
-        <div className="card">
-          <div className="card-title">🔴 ERROR ANALYSIS
-            <button className="btn" style={{fontSize:8,padding:'3px 10px'}} onClick={()=>onNav('errors')}>VIEW ALL →</button>
+        {/* Weakness Overview */}
+        <div className="card" style={{borderColor: overallAcc < 60 ? '#ff333333' : '#39ff1433'}}>
+          <div className="card-title" style={{color: overallWeakness.color}}>
+            {overallWeakness.emoji} PERFORMANCE STATUS
+            <button className="btn" style={{fontSize:8,padding:'3px 10px'}} onClick={()=>onNav('analytics')}>ANALYTICS →</button>
           </div>
-          <BarChart data={errBySubj} colors={[SUBC.Maths,SUBC.English,SUBC.GS,SUBC.AFCAT]} h={36}/>
-          <div style={{display:'flex',gap:8,marginTop:10}}>
-            {[['TOTAL',errs.length,'#ff8888'],['UNRESOLVED',unfix,'#ff3333'],['FIXED',errs.filter(e=>e.resolved).length,'#39ff14']].map(([l,v,c])=>(
-              <div key={l} style={{flex:1,textAlign:'center'}}>
-                <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:22,color:c}}>{v}</div>
-                <div style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'var(--text4)',marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Live Stats */}
-        <div className="card">
-          <div className="card-title">⚡ LIVE STATS</div>
           {[
-            ['Topics Done',`${totalDone}/50`,'#39ff14'],
-            ['Study Streak',`${streak} days`,streak>=7?'#39ff14':streak>=3?'#ffd700':'#ff8888'],
-            ['Avg Score',avg?`${avg}/300`:'—',avg>=150?'#39ff14':avg?'#ffd700':'#4a7a4a'],
-            ['Errors Unresolved',unfix,unfix>0?'#ff3333':'#39ff14'],
-            ['Logs Saved',logs.length,'#39ff14'],
-            ['Habits Days',habs.length,'#39ff14'],
+            ['Quiz Accuracy', quizResults.length > 0 ? `${overallAcc}%` : '—', overallWeakness.color],
+            ['Topics Done', `${totalDone}/50`, '#39ff14'],
+            ['Study Streak', `${streak} days`, streak>=7?'#39ff14':streak>=3?'#ffd700':'#ff8888'],
+            ['Avg Score', avg?`${avg}/300`:'—', avg>=150?'#39ff14':avg?'#ffd700':'#4a7a4a'],
+            ['Vocab Words', vocab.length, '#39ff14'],
+            ['Vocab Due', dueVocabCount, dueVocabCount>0?'#ffd700':'#39ff14'],
           ].map(([l,v,c])=>(
             <div key={l} className="sr">
               <span style={{color:'var(--text2)',fontSize:13}}>{l}</span>
@@ -196,6 +175,36 @@ export default function Dashboard({ onNav }) {
               Every day counts, {settings.name} — go get your commission.
             </div>
           </div>
+        </div>
+
+        {/* Today's Plan Preview */}
+        <div className="card" style={{borderColor:'#00d4ff33',background:'#00101a'}}>
+          <div className="card-title" style={{color:'var(--cyan)'}}>
+            📋 TODAY'S PLAN
+            <button className="btn btn-c" style={{fontSize:8,padding:'3px 10px'}} onClick={()=>onNav('planner')}>FULL PLAN →</button>
+          </div>
+          {todayPlan.length > 0 ? (
+            <>
+              <div style={{display:'flex',justifyContent:'space-between',fontFamily:"'Share Tech Mono',monospace",fontSize:9,color:'var(--text4)',marginBottom:8}}>
+                <span>PROGRESS</span>
+                <span style={{color:'var(--green)'}}>{planDone}/{todayPlan.length}</span>
+              </div>
+              <div className="pb" style={{marginBottom:12}}>
+                <div className="pf" style={{width:`${todayPlan.length>0?Math.round(planDone/todayPlan.length*100):0}%`,background:'var(--green)'}}/>
+              </div>
+              {todayPlan.slice(0,5).map(t=>(
+                <div key={t.id} style={{padding:'6px 0',borderBottom:'1px solid var(--border3)',display:'flex',gap:8,alignItems:'center',opacity:t.completed?0.5:1}}>
+                  <span style={{color:SUBC[t.subject]||'var(--text)',fontFamily:"'Share Tech Mono',monospace",fontSize:9}}>{t.subject}</span>
+                  <span style={{fontSize:13,color:t.completed?'var(--text3)':'var(--text)',textDecoration:t.completed?'line-through':'none'}}>{t.topic}</span>
+                </div>
+              ))}
+            </>
+          ) : (
+            <div style={{textAlign:'center',padding:'16px 0'}}>
+              <div style={{fontSize:12,color:'var(--text4)',marginBottom:8}}>No plan for today yet</div>
+              <button className="btn btn-g" style={{fontSize:9}} onClick={()=>onNav('planner')}>GENERATE PLAN →</button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -212,38 +221,9 @@ export default function Dashboard({ onNav }) {
                 style={{padding:'6px 10px',background:'#1a1500',border:'1px solid #ffd70033',borderRadius:3,fontSize:12,display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
                 <span style={{color:SUBC[a.sub]||'#ffd700',fontFamily:"'Share Tech Mono',monospace",fontSize:9}}>{a.sub}</span>
                 <span style={{color:'var(--text)'}}>{a.topic}</span>
-                <span className="tag" style={{background:'#ffd70011',border:'1px solid #ffd70044',color:'var(--gold)'}}>{a.round} · {a.daysSince}/{a.dueDays}d</span>
+                <span className="tag" style={{background:'#ffd70011',border:'1px solid #ffd70044',color:'var(--gold)'}}>{a.round} · {a.daysOverdue}d late</span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Smart Plan */}
-      {planTasks.length > 0 && (
-        <div className="card" style={{borderColor:'#00d4ff33',background:'#00101a'}}>
-          <div className="card-title" style={{color:'var(--cyan)'}}>
-            🧠 SMART COMMANDER PLAN
-            <span style={{color:'var(--text4)',fontSize:8}}>Focus {focus}/5 · Energy {energy}/5</span>
-          </div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-            {planTasks.map((t,i)=>{
-              const subCol = SUBC[t.sub]||'#ffd700'
-              if(t.type==='rev') return (
-                <div key={i} style={{padding:'7px 10px',background:'#1a1500',border:'1px solid #00d4ff33',borderRadius:4,fontSize:12,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                  <span style={{color:subCol,fontFamily:"'Share Tech Mono',monospace",fontSize:9}}>{t.sub}</span>
-                  <span style={{color:'var(--text)'}}>{t.topic}</span>
-                  <span className="tag" style={{background:'#00d4ff11',border:'1px solid #00d4ff44',color:'var(--cyan)'}}>{t.round} · {t.overdueBy}d late</span>
-                </div>
-              )
-              return (
-                <div key={i} style={{padding:'7px 10px',background:'var(--bg4)',border:'1px solid var(--border)',borderRadius:4,fontSize:12,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
-                  <span style={{color:subCol,fontFamily:"'Share Tech Mono',monospace",fontSize:9}}>{t.sub}</span>
-                  <span style={{color:'var(--text)'}}>{t.topic}</span>
-                  <span className="tag" style={{background:'#39ff1411',border:'1px solid #39ff1444',color:'var(--green)'}}>PRI {t.pri} · CONF {t.conf}</span>
-                </div>
-              )
-            })}
           </div>
         </div>
       )}

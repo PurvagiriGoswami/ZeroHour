@@ -72,51 +72,23 @@ export const SC   = { 'Not Started':'#4a4a4a', 'In Progress':'#ffd700', Done:'#3
 export const PRICC= { H:'#ff8888', M:'#ffd700', L:'#4a7a4a' }
 export const SUBTOTALS = { Maths:14, English:8, GS:14, AFCAT:14 }
 
-export const DAILY_PLANS = {
-  '2026-03-20':'[M] Number System · [E] Spotting Errors · [GS] Polity',
-  '2026-03-21':'[M] Profit & Loss + SI/CI · [E] Sentence Improvement',
-  '2026-03-22':'[M] Time & Work + Pipes · [E] Sentence Improvement cont.',
-  '2026-03-23':'[M] TSD — Trains & Boats · [GS] Parliament + President',
-  '2026-03-24':'[M] Algebra + Geometry · [GS] Parliament cont.',
-  '2026-03-25':'[E] RC — 2 PYQ passages · [GS] Modern History',
-  '2026-03-26':'[E] Ordering of Sentences · [GS] Ancient + Medieval',
-  '2026-03-27':'[E] Synonyms + Vocab · [GS] Indian Geography',
-  '2026-03-28':'🔴 MOCK #1 — OSW360 full paper · 2.5 hrs strict',
-  '2026-03-29':'[ALL] Error Log review from Mock #1',
-  '2026-03-30':'[GS] Physics — motion, optics, electricity',
-  '2026-03-31':'🔴 MOCK #2 — FOLD past paper · strict timing',
-}
-
-export const DEFAULT_FORMULAS = [
-  { id:'f1', sub:'Maths', topic:'SI & CI',             formula:'SI = P×R×T/100\nCI = P(1+R/100)ᵀ − P',        note:'CI−SI for 2 yrs = P(R/100)²',               learned:false },
-  { id:'f2', sub:'Maths', topic:'Time Speed Distance', formula:'Distance = Speed × Time\nSpeed = D/T  Time = D/S', note:'1 km/h = 5/18 m/s  |  1 m/s = 18/5 km/h', learned:false },
-  { id:'f3', sub:'Maths', topic:'Time & Work',         formula:'Rate = 1/A + 1/B\nTime = AB/(A+B)',             note:'Pipes: filling +, emptying −',               learned:false },
-  { id:'f4', sub:'Maths', topic:'Profit & Loss',       formula:'Profit% = (SP−CP)/CP × 100\nDiscount% = D/MP × 100', note:'SP = CP(100+P%)/100',                  learned:false },
-  { id:'f5', sub:'Maths', topic:'Ratio & Proportion',  formula:'a:b :: c:d → ad = bc',                         note:'Alligation: cheap/(costly−mean) = mean ratio', learned:false },
-  { id:'f6', sub:'Maths', topic:'Mensuration 2D',      formula:'Circle: πr²  |  Triangle: ½bh\nTrapezium: ½(a+b)h', note:'Equilateral △: (√3/4)a²',              learned:false },
-  { id:'f7', sub:'Maths', topic:'Mensuration 3D',      formula:'Sphere: 4πr³/3  |  Cylinder: πr²h\nCone: πr²h/3', note:'SA(sphere)=4πr²  SA(cyl)=2πr(r+h)',       learned:false },
-  { id:'f8', sub:'Maths', topic:'Trigonometry',        formula:'sin²θ+cos²θ=1\n1+tan²θ=sec²θ',                note:'sin30=½  cos30=√3/2  tan45=1',               learned:false },
-  { id:'f9', sub:'Maths', topic:'Algebra Identities',  formula:'(a+b)²=a²+2ab+b²\na²−b²=(a+b)(a−b)',         note:'(a+b)³=a³+3a²b+3ab²+b³',                   learned:false },
-  { id:'f10',sub:'Maths', topic:'Percentage',          formula:'X% of Y = Y×X/100\n% change=(new−old)/old×100',note:'a% of b = b% of a  (key trick!)',            learned:false },
-]
-
 export const TABS = [
-  { id:'dash',     label:'⬡ COMMAND',   icon:'⬡',  short:'CMD' },
-  { id:'daily',    label:'📅 DAILY',    icon:'📅', short:'LOG' },
-  { id:'habits',   label:'🔥 HABITS',   icon:'🔥', short:'HAB' },
-  { id:'syl',      label:'📚 SYLLABUS', icon:'📚', short:'SYL' },
-  { id:'mocks',    label:'📝 MOCKS',    icon:'📝', short:'MCK' },
-  { id:'pyq',      label:'📋 PYQ',      icon:'📋', short:'PYQ' },
-  { id:'errors',   label:'🔴 ERRORS',   icon:'🔴', short:'ERR' },
-  { id:'rev',      label:'🔄 REVISION', icon:'🔄', short:'REV' },
-  { id:'pomo',     label:'⏱ POMO',      icon:'⏱', short:'TMR' },
-  { id:'vocab',    label:'📖 VOCAB',    icon:'📖', short:'VOC' },
-  { id:'formulas', label:'📐 FORMULAS', icon:'📐', short:'FRM' },
-  { id:'calc',     label:'📊 CALC',     icon:'📊', short:'CAL' },
-  { id:'settings', label:'⚙ SETTINGS',  icon:'⚙',  short:'SET' },
+  { id:'dash',     label:'⬡ COMMAND',    icon:'⬡',  short:'CMD' },
+  { id:'daily',    label:'📅 DAILY',     icon:'📅', short:'LOG' },
+  { id:'habits',   label:'🔥 HABITS',    icon:'🔥', short:'HAB' },
+  { id:'syl',      label:'📚 SYLLABUS',  icon:'📚', short:'SYL' },
+  { id:'mocks',    label:'📝 MOCKS',     icon:'📝', short:'MCK' },
+  { id:'pyq',      label:'📋 PYQ',       icon:'📋', short:'PYQ' },
+  { id:'rev',      label:'🔄 REVISION',  icon:'🔄', short:'REV' },
+  { id:'pomo',     label:'⏱ POMO',       icon:'⏱', short:'TMR' },
+  { id:'vocab',    label:'📖 VOCAB',     icon:'📖', short:'VOC' },
+  { id:'quiz',     label:'🧠 QUIZ',      icon:'🧠', short:'QIZ' },
+  { id:'planner',  label:'📋 PLANNER',   icon:'📋', short:'PLN' },
+  { id:'analytics',label:'📊 ANALYTICS', icon:'📊', short:'ANL' },
+  { id:'settings', label:'⚙ SETTINGS',   icon:'⚙',  short:'SET' },
 ]
 
-export const MOB_TAB_ORDER = ['dash','daily','syl','mocks','pomo','habits','errors','formulas','pyq','rev','vocab','calc','settings']
+export const MOB_TAB_ORDER = ['dash','daily','syl','mocks','pomo','habits','pyq','rev','vocab','quiz','planner','analytics','settings']
 
 export function makeSyl() {
   return RAW_SYLLABUS.map(([id,sub,topic,pri,subs]) => ({
