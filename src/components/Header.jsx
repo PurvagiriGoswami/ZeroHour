@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { formatDate } from '../utils/dateUtils'
 
-export default function Header({ onNav }) {
+export default function Header() {
   const { state } = useStore()
   const { syncStatus } = state
   const [time, setTime] = useState(new Date())
@@ -15,42 +15,45 @@ export default function Header({ onNav }) {
   const dateStr = formatDate(time)
   const timeStr = time.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})
 
+  const syncColors = { ok:'var(--green)', syncing:'var(--gold)', err:'var(--red)' }
+
   return (
-    <div className="glass" style={{
-      borderBottom:'1px solid rgba(0,255,195,0.15)',
-      padding:'0 24px',
+    <div style={{
+      background:'var(--bg2)',
+      borderBottom:'1px solid var(--border)',
+      padding:'0 12px',
       height:'var(--hdr-h)',
-      display:'flex',alignItems:'center',justifyContent:'space-between',
-      flexShrink:0,position:'relative',zIndex:50,
+      display:'flex',
+      alignItems:'center',
+      justifyContent:'space-between',
+      flexShrink:0,
+      position:'relative',
+      zIndex:50,
       paddingTop:'var(--safe-top)',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
+      gap:8,
     }}>
-      <div 
-        onClick={() => onNav?.('dash')}
-        style={{display:'flex', alignItems:'center', gap:12, cursor:'pointer', userSelect:'none', transition:'transform 0.2s'}}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        <img src="/assets/branding/ZeroHour_Main_logo.svg" alt="ZeroHour Logo" style={{height:38, width:'auto', filter:'drop-shadow(0 0 10px rgba(255,182,0,0.3))'}} />
-        <div style={{display:'flex', flexDirection:'column'}}>
-          <div className="text-glow" style={{fontFamily:"'Share Tech Mono',monospace",fontSize:22,color:'var(--gold)',letterSpacing:3,lineHeight:1, fontWeight:'800'}}>
-            ZEROHOUR
-          </div>
-          <div style={{fontSize:9, color:'var(--text3)', letterSpacing:1.5, marginTop:4, textTransform:'uppercase', fontWeight:600, opacity: 0.8}}>
-            PREPARE SMART. PERFORM AT ZERO HOUR.
-          </div>
+      {/* Brand */}
+      <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+        <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>🎖</span>
+        <div style={{fontFamily:"'Share Tech Mono',monospace",color:'var(--green)',letterSpacing:1.5,lineHeight:1.3,minWidth:0}}>
+          <div className="hdr-title">ZEROHOUR</div>
+          <div className="hdr-sub">PREPARE SMART, PERFORM AT ZERO HOUR.</div>
         </div>
       </div>
 
-      <div style={{display:'flex',alignItems:'center',gap:24}}>
-        <div style={{display:'flex', alignItems:'center', gap:8, background:'rgba(0,0,0,0.2)', padding:'4px 12px', borderRadius:20, border:'1px solid rgba(0,255,195,0.1)'}}>
-          <div className={`sync-dot ${syncStatus}`} title={syncStatus==='ok'?'Synced ✓':syncStatus==='syncing'?'Syncing...':'Sync error'}/>
-          <span style={{fontFamily:"'Share Tech Mono',monospace", fontSize:10, color:'var(--text4)', letterSpacing:1}}>SYSTEM: <span style={{color:syncStatus==='ok'?'var(--green)':'var(--gold)'}}>{syncStatus==='ok'?'NOMINAL':'SYNCING'}</span></span>
+      {/* Right: sync + clock */}
+      <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+        <div style={{display:'flex',alignItems:'center',gap:5,padding:'5px 9px',
+          background:'var(--bg4)',border:`1px solid ${syncColors[syncStatus]}44`,borderRadius:6}}>
+          <div className={`sync-dot ${syncStatus}`}/>
+          <span className="hdr-sync-label" style={{fontFamily:"'Share Tech Mono',monospace",fontSize:9,
+            color:syncColors[syncStatus],letterSpacing:1}}>
+            {syncStatus==='ok'?'SYNC':syncStatus==='syncing'?'...':'ERR'}
+          </span>
         </div>
-        
-        <div className="digital-clock" style={{display:'flex', flexDirection:'column', alignItems:'flex-end', minWidth:160}}>
-          <div style={{fontSize:12, color:'var(--text3)', opacity:0.7, marginBottom:2}}>{dateStr}</div>
-          <div style={{fontSize:22, fontWeight:'bold', letterSpacing:2}}>{timeStr}</div>
+        <div style={{textAlign:'right',fontFamily:"'Share Tech Mono',monospace"}}>
+          <div className="hdr-time" style={{color:'var(--gold)',letterSpacing:1,lineHeight:1.2}}>{timeStr}</div>
+          <div className="hdr-date" style={{color:'var(--text4)',letterSpacing:.5}}>{dateStr}</div>
         </div>
       </div>
     </div>
