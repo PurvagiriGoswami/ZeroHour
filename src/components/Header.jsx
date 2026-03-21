@@ -27,15 +27,18 @@ export default function Header({ onNav }) {
     }}>
       <div 
         onClick={() => onNav?.('dash')}
-        style={{display:'flex', flexDirection:'column', justifyContent:'center', cursor:'pointer', userSelect:'none', transition:'transform 0.2s'}}
+        style={{display:'flex', alignItems:'center', gap:12, cursor:'pointer', userSelect:'none', transition:'transform 0.2s'}}
         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
-        <div className="text-glow" style={{fontFamily:"'Share Tech Mono',monospace",fontSize:26,color:'var(--green)',letterSpacing:3,lineHeight:1, fontWeight:'800'}}>
-          ZEROHOUR
-        </div>
-        <div style={{fontSize:10, color:'var(--text3)', letterSpacing:1.5, marginTop:6, textTransform:'uppercase', fontWeight:600, opacity: 0.8}}>
-          PREPARE SMART. PERFORM AT ZERO HOUR.
+        <img src="/assets/branding/ZeroHour_Main_logo.svg" alt="ZeroHour Logo" style={{height:38, width:'auto', filter:'drop-shadow(0 0 10px rgba(255,182,0,0.3))'}} />
+        <div style={{display:'flex', flexDirection:'column'}}>
+          <div className="text-glow" style={{fontFamily:"'Share Tech Mono',monospace",fontSize:22,color:'var(--gold)',letterSpacing:3,lineHeight:1, fontWeight:'800'}}>
+            ZEROHOUR
+          </div>
+          <div style={{fontSize:9, color:'var(--text3)', letterSpacing:1.5, marginTop:4, textTransform:'uppercase', fontWeight:600, opacity: 0.8}}>
+            PREPARE SMART. PERFORM AT ZERO HOUR.
+          </div>
         </div>
       </div>
 

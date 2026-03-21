@@ -1,4 +1,8 @@
 <div align="center">
+  <img src="file:///c:/Users/purvg/Downloads/cds%20with%20left%20side%20menu/public/assets/logo-full.png" width="400" alt="ZeroHour Logo">
+</div>
+
+<div align="center">
 
 ```
 ███████╗███████╗██████╗  ██████╗ ██╗  ██╗ ██████╗ ██╗   ██╗██████╗

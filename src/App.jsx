@@ -114,7 +114,7 @@ export default function App() {
   // Error boundary fallback UI if something is missing
   if (!state) {
     return (
-      <div style={{background:'#0f172a', color:'#00ffc3', height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:40, textAlign:'center'}}>
+      <div style={{background:'#0f172a', color:'#ffb600', height:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:40, textAlign:'center'}}>
         <h1 style={{fontFamily:"'Share Tech Mono', monospace", fontSize:42, marginBottom:20}}>CORE SYSTEM FAILURE</h1>
         <p style={{color:'#94a3b8', marginBottom:30}}>Unable to access local data store. Please wipe cache and restart.</p>
         <button onClick={() => { localStorage.clear(); window.location.reload(); }} style={{padding:'12px 24px', background:'#f43f5e', border:'none', borderRadius:8, color:'white', fontWeight:'bold', cursor:'pointer'}}>WIPE SYSTEM CACHE & REBOOT</button>
@@ -132,14 +132,11 @@ export default function App() {
           alignItems: 'center', justifyContent: 'center', gap: 20,
           animation: 'fadeIn 0.5s ease-out'
         }}>
-          <div style={{
-            fontFamily: "'Share Tech Mono', monospace", fontSize: 42,
-            color: 'var(--green)', fontWeight: 'bold', letterSpacing: 8,
-            textShadow: '0 0 20px rgba(0,255,195,0.4)',
+          <img src="/assets/branding/ZeroHour_Main_logo.svg" alt="ZeroHour" style={{
+            height: 140, marginBottom: 20, width:'auto',
+            filter: 'drop-shadow(0 0 30px rgba(255,182,0,0.6))',
             animation: 'pulse 2s infinite'
-          }}>
-            ZEROHOUR
-          </div>
+          }} />
           <div style={{
             fontSize: 12, color: 'var(--text4)', letterSpacing: 2,
             textTransform: 'uppercase', opacity: 0.8
@@ -151,8 +148,8 @@ export default function App() {
             borderRadius: 1, overflow: 'hidden', marginTop: 10
           }}>
             <div style={{
-              width: '100%', height: '100%', background: 'var(--green)',
-              boxShadow: '0 0 10px var(--green)',
+              width: '100%', height: '100%', background: 'var(--gold)',
+              boxShadow: '0 0 10px var(--gold)',
               animation: 'scanline 1.5s infinite linear'
             }} />
           </div>
@@ -177,13 +174,13 @@ export default function App() {
           
           {/* Beautified Professional Footer */}
           <footer className="glass" style={{
-            padding: '60px 40px', borderTop: '1px solid rgba(0,255,195,0.1)',
+            padding: '60px 40px', borderTop: '1px solid rgba(255,182,0,0.1)',
             marginTop: 60, background: 'rgba(15, 23, 42, 0.6)',
             position: 'relative', overflow: 'hidden'
           }}>
             <div className="footer-grid">
               <div style={{textAlign: 'left'}}>
-                <div style={{fontFamily: "'Share Tech Mono', monospace", color: 'var(--green)', fontSize: 20, marginBottom: 12, letterSpacing: 2}}>ZEROHOUR / 2026</div>
+                <div style={{fontFamily: "'Share Tech Mono', monospace", color: 'var(--gold)', fontSize: 20, marginBottom: 12, letterSpacing: 2}}>ZEROHOUR / 2026</div>
                 <div style={{fontSize: 12, color: 'var(--text3)', maxWidth: 280, lineHeight: 1.6}}>
                   Advanced AI-Powered Defence Preparation System. 
                   Built to ensure performance at the decisive moment.
@@ -193,16 +190,16 @@ export default function App() {
               <div style={{textAlign: 'center'}}>
                 <div style={{fontSize: 13, color: 'var(--text4)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1}}>Command & Control</div>
                 <div style={{fontSize: 12, color: 'var(--text3)', marginBottom: 4}}>Designed & Developed by</div>
-                <div className="text-glow" style={{fontFamily: "'Share Tech Mono', monospace", color: 'var(--text2)', fontSize: 16, fontWeight: 'bold'}}>PURVAGIRI GOSWAMI</div>
+                <div className="text-glow" style={{fontFamily: "'Share Tech Mono', monospace", color: 'var(--text2)', fontSize: 16, fontWeight: 'bold'}}>INFERNO</div>
                 <div style={{fontSize: 10, color: 'var(--text5)', marginTop: 12}}>© ALL RIGHTS RESERVED</div>
               </div>
 
               <div style={{textAlign: 'right'}}>
                 <div style={{fontFamily: "'Share Tech Mono', monospace", fontSize: 10, color: 'var(--text5)', letterSpacing: 1, marginBottom: 10}}>SYSTEM_MANIFEST_V1.0</div>
                 <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
-                  <div style={{fontSize: 11, color: 'var(--text4)'}}>BUILD: <span style={{color: 'var(--green)'}}>PROD-ENG-2026</span></div>
+                  <div style={{fontSize: 11, color: 'var(--text4)'}}>BUILD: <span style={{color: 'var(--gold)'}}>PROD-ENG-2026</span></div>
                   <div style={{fontSize: 11, color: 'var(--text4)'}}>ENGINE: <span style={{color: 'var(--cyan)'}}>ZERO-GEN-X</span></div>
-                  <div style={{fontSize: 11, color: 'var(--text4)'}}>STATUS: <span style={{color: 'var(--green)'}}>NOMINAL</span></div>
+                  <div style={{fontSize: 11, color: 'var(--text4)'}}>STATUS: <span style={{color: 'var(--gold)'}}>NOMINAL</span></div>
                 </div>
               </div>
             </div>
@@ -210,7 +207,7 @@ export default function App() {
             {/* Decorative line */}
             <div style={{
               position: 'absolute', bottom: 0, left: '10%', right: '10%', height: 1,
-              background: 'linear-gradient(90deg, transparent, var(--green), transparent)',
+              background: 'linear-gradient(90deg, transparent, var(--gold), transparent)',
               opacity: 0.3
             }} />
           </footer>
@@ -226,7 +223,7 @@ export default function App() {
       <div style={{
         position: 'fixed', bottom: 80, right: 20,
         fontFamily: "'Share Tech Mono', monospace", fontSize: 10,
-        color: 'var(--green)', opacity: 0.1, pointerEvents: 'none',
+        color: 'var(--gold)', opacity: 0.1, pointerEvents: 'none',
         zIndex: 100, letterSpacing: 2
       }}>
         ZEROHOUR
