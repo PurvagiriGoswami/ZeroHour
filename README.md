@@ -1,75 +1,111 @@
-# ZeroHour
+<div align="center">
 
-AI-powered Defence Exam Preparation System
+![ZeroHour Banner](file:///C:/Users/purvg/.gemini/antigravity/brain/d7fb8995-2fb5-497b-84ea-210a2c876f70/zerohour_banner_1774088596458.png)
 
-![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
-![Tech](https://img.shields.io/badge/Tech-React_Vite-cyan?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Platform-Web_App-blue?style=for-the-badge)
-![License](https://img.shields.io/badge/License-Educational-lightgrey?style=for-the-badge)
+# ⚡ ZEROHOUR
+### **"Prepare Smart. Perform at Zero Hour."**
 
-> 🚀 **"Prepare Smart. Perform at Zero Hour."**
-> A production-grade AI-powered preparation system designed specifically for CDS, NDA, and AFCAT aspirants.
+[![Status](https://img.shields.io/badge/Status-Active-00ffc3?style=for-the-badge&logo=statuspage&logoColor=black)](https://github.com/PurvagiriGoswami/ZeroHour)
+[![Tech](https://img.shields.io/badge/Stack-React_|_Vite_|_Firebase-22d3ee?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![License](https://img.shields.io/badge/License-Educational-lightgrey?style=for-the-badge)](LICENSE)
 
----
+**ZeroHour** is a production-grade, AI-powered preparation system engineered for **CDS, NDA, and AFCAT** aspirants. It transforms raw study data into actionable intelligence, ensuring maximum performance at the decisive moment.
 
-## 🧠 Overview
-
-**ZeroHour** is a next-generation study platform that combines data-driven insights with military discipline. It's built to ensure that when the most critical moment arrives—the Zero Hour—you are prepared to perform at your peak.
+[Explore Features](#🚀-core-capabilities) • [Tech Stack](#🏗️-architecture--tech) • [Get Started](#⚙️-deployment-sequence)
 
 ---
 
-## 🚀 Key Features
+</div>
 
-*   **Smart Dashboard**: Real-time progress tracking with subject-wise completion stats and mock performance graphs.
-*   **AI Vocabulary Engine**: Intelligent word discovery, tracking, and revision system.
-*   **Weekly Quiz System**: Adaptive testing framework designed to push your limits.
-*   **Performance Analytics**: Deep-dive into your data to identify trends and optimize your study strategy.
-*   **Spaced Revision System**: Built-in scientific repetition cycles (R1, R2, R3) for maximum retention.
-*   **Weakness Tracking**: Categorize mistakes (Concept Gap, Silly Mistake, Time Pressure) to conquer difficult topics.
-*   **Command Planner**: Integrated daily study logging with energy tracking and structured subject planning.
-*   **Habit Tracker**: Discipline-focused module for tracking study hours, physical training, and sleep cycles.
+## 🚀 Core Capabilities
 
----
-
-## 🏗️ Tech Stack
-
-| Layer        | Technology              |
-| ------------ | ----------------------- |
-| Frontend     | React + Vite            |
-| State        | Zustand                 |
-| Database     | Firebase (Cloud Sync)   |
-| Charts       | Recharts                |
-| Styling      | Tailwind CSS / Vanilla  |
+| Feature | Description |
+| :--- | :--- |
+| **📊 Command Dashboard** | Real-time telemetry of your progress, exam countdowns, and subject-wise completion metrics. |
+| **📖 Vocab Intelligence** | AI-driven vocabulary bank with spaced-repetition tracking and automatic mastery leveling. |
+| **🧠 Adaptive Quizzing** | Weekly testing framework that analyzes weaknesses and adjust difficulty based on performance. |
+| **🔄 Spaced Revision** | Scientific repetition cycles (R1, R2, R3) integrated into every subject module for 10x retention. |
+| **📋 Strategic Planner** | Daily mission logging with energy tracking, study hour targets, and syllabus mapping. |
+| **🔥 Discipline Tracker** | High-visibility habit module for tracking PT, study streaks, and recovery cycles. |
 
 ---
 
-## 📁 Project Structure
+## 📸 System Intelligence (Visuals)
+
+<div align="center">
+  <img src="file:///C:/Users/purvg/.gemini/antigravity/brain/d7fb8995-2fb5-497b-84ea-210a2c876f70/after_loading_view_1774088186971.png" width="900" alt="ZeroHour Dashboard">
+  <p><i>Figure 1: The ZeroHour Command Centre — Integrated analytics and real-time exam telemetry.</i></p>
+</div>
+
+---
+
+## 🏗️ Architecture & Tech
+
+ZeroHour is built on a high-performance modern stack, optimized for speed, sync reliability, and a premium "Military Tech" aesthetic.
+
+*   **⚡ Frontend**: [Vite](https://vitejs.dev/) + [React 18](https://reactjs.org/)
+*   **📡 Backend**: [Firebase Firestore](https://firebase.google.com/products/firestore) (Real-time Cloud Sync)
+*   **🔮 State**: [Zustand](https://github.com/pmndrs/zustand) (Atomic State Management)
+*   **🎨 UI/UX**: Custom Glassmorphism UI + Vanilla CSS Refinements
+*   **📈 Analytics**: [Recharts](https://recharts.org/) for data visualization
+
+---
+
+## 📂 Logic Structure
 
 ```bash
 📦 ZeroHour
-├── src/ 
-│   ├── components/      # UI Components (Header, Nav, Modal, etc.)
-│   ├── pages/           # Feature Modules (Dashboard, Vocab, Quiz, etc.)
-│   ├── store/           # Global State Management (Zustand)
-│   ├── services/        # External Services (Firebase, Excel)
-│   ├── utils/           # Helper Functions & Constants
-│   └── App.jsx          # Main Application Shell
-├── index.html           # Entry Point
-└── package.json         # Dependencies & Scripts
+├── 📂 src/ 
+│   ├── 📂 components/  # Atomic UI (Header, Nav, Charts)
+│   ├── 📂 pages/       # System Modules (Dashboard, Vocab, Quiz)
+│   ├── 📂 store/       # Global Command State
+│   ├── 📂 services/    # External Protocols (Firebase, Excel)
+│   ├── 📂 utils/       # Strategic Logic (Weakness Engine, Spaced Rep)
+│   └── 📄 App.jsx      # Core Application Shell
+├── 📄 index.html       # Entry Point
+└── 📄 package.json     # System Dependencies
 ```
 
 ---
 
-## 👨‍💻 Author
+## ⚙️ Deployment Sequence
 
-**Purvagiri Goswami**
+To initialize the ZeroHour Command Centre locally:
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/PurvagiriGoswami/ZeroHour.git
+   cd ZeroHour
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment Variables**
+   Create a `.env` file in the root and add your Firebase credentials:
+   ```env
+   VITE_FB_API_KEY=your_key
+   VITE_FB_PROJECT_ID=your_id
+   ...
+   ```
+
+4. **Launch Local Dev Server**
+   ```bash
+   npm run dev
+   ```
 
 ---
 
-## 📄 License
+## 👨‍💻 Command & Control
 
-This project is for educational and personal use. All rights reserved.
+**Developed by**: [Purvagiri Goswami](https://github.com/PurvagiriGoswami)  
+*Senior Full-Stack Engineer | Defence Tech Strategist*
 
 ---
 
-🔥 **"Prepare Smart. Perform at Zero Hour."**
+<div align="center">
+  <p>© 2026 ZEROHOUR SYSTEM. ALL RIGHTS RESERVED.</p>
+  <b>"The more you sweat in peace, the less you bleed in war."</b>
+</div>
