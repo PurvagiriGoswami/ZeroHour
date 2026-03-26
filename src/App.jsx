@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react'
 import { useStore } from './store'
 import { useAppStore } from './store/useStore'
 import Header from './components/Header'
@@ -228,6 +229,9 @@ export default function App() {
       }}>
         ZEROHOUR
       </div>
+
+      {/* Vercel Web Analytics */}
+      <VercelAnalytics />
     </div>
   )
 }
