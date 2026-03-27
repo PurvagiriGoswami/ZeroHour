@@ -1,11 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getFirestore, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore'
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  FacebookAuthProvider, 
-  OAuthProvider 
-} from 'firebase/auth'
+import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FB_API_KEY,
@@ -30,10 +25,8 @@ if (hasConfig) {
 }
 
 const googleProvider = new GoogleAuthProvider()
-const facebookProvider = new FacebookAuthProvider()
-const appleProvider = new OAuthProvider('apple.com')
 
-export { db, auth, googleProvider, facebookProvider, appleProvider }
+export { db, auth, googleProvider }
 
 export const DATA_KEYS = [
   'syl','mocks','logs','habs','revision',
