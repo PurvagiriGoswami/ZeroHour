@@ -18,10 +18,42 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setError('')
     setLoading(true)
+    
+    if (!auth) {
+      setError('Firebase Authentication is not initialized. Please check your environment variables.')
+      setLoading(false)
+      return
+    }
+
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (err) {
-      setError(err.message)
+      console.error('Google Sign-In Error:', err.code, err.message)
+      
+      let friendlyMessage = 'Google Sign-In failed. Please try again.'
+      
+      switch (err.code) {
+        case 'auth/operation-not-allowed':
+          friendlyMessage = 'Google Sign-In is not enabled in the Firebase Console. Go to Authentication > Sign-in method to enable it.'
+          break
+        case 'auth/unauthorized-domain':
+          friendlyMessage = 'This domain is not authorized for Firebase Auth. Add it to "Authorized domains" in the Firebase Console.'
+          break
+        case 'auth/popup-blocked':
+          friendlyMessage = 'Sign-in popup was blocked. Please enable popups and try again.'
+          break
+        case 'auth/popup-closed-by-user':
+          friendlyMessage = 'Sign-in window was closed before completion. Please try again.'
+          break
+        case 'auth/invalid-request':
+        case 'auth/invalid-action-code':
+          friendlyMessage = 'Invalid request action. This can happen if your Firebase config is incorrect or Google Cloud OAuth is misconfigured.'
+          break
+        default:
+          friendlyMessage = err.message
+      }
+      
+      setError(friendlyMessage)
     } finally {
       setLoading(false)
     }

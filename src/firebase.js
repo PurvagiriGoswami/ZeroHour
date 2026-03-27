@@ -18,8 +18,7 @@ let db = null
 let auth = null
 
 if (hasConfig) {
-  const existing = getApps().find(a => a.name === 'zerohour-app')
-  app = existing || initializeApp(firebaseConfig, 'zerohour-app')
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
   db = getFirestore(app)
   auth = getAuth(app)
 }
