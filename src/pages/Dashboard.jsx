@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
-import { useStore } from '../store'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { auth, db } from '../firebase'
 import { doc, setDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore'
 import { EXAMS, SUBC, SUBTOTALS, HABITS } from '../data'
@@ -12,9 +12,21 @@ import { DonutChart, LineChart, BarChart } from '../Charts'
 import GeoMap from '../components/GeoMap'
 
 export default function Dashboard({ onNav }) {
-  const { state } = useStore()
-  const { syl, mocks, logs, habs, revision, vocab, settings, quizResults, plannerTasks, pyqlog } = state
-  const revisionCycles = useAppStore(s => s.revisionCycles)
+  const { syl, mocks, logs, habs, revision, vocab, settings, quizResults, plannerTasks, pyqlog, revisionCycles } = useAppStore(
+    useShallow(s => ({
+      syl: s.syl,
+      mocks: s.mocks,
+      logs: s.logs,
+      habs: s.habs,
+      revision: s.revision,
+      vocab: s.vocab,
+      settings: s.settings,
+      quizResults: s.quizResults,
+      plannerTasks: s.plannerTasks,
+      pyqlog: s.pyqlog,
+      revisionCycles: s.revisionCycles
+    }))
+  )
   const user = auth.currentUser
 
   const [consistencyHistory, setConsistencyHistory] = useState([])
@@ -64,6 +76,8 @@ export default function Dashboard({ onNav }) {
   const best = scores.length ? Math.max(...scores) : null
   const streak = useMemo(() => calcStreak(logs), [logs])
   const totalDone = syl.filter(t => t.status==='Done').length
+
+  const streakDisplay = streak > 0 ? `${streak}-day streak` : 'Start your streak today'
 
   // Quiz performance
   const overallAcc = useMemo(() => getOverallAccuracy(quizResults), [quizResults])
@@ -128,7 +142,7 @@ export default function Dashboard({ onNav }) {
 
         <div className="hide-mob" style={{display:'flex', gap:24}}>
           <div style={{textAlign:'center'}}>
-            <div style={{fontSize:20, fontWeight:900, color:'var(--gold)'}}>{streak}d</div>
+            <div style={{fontSize:20, fontWeight:900, color:'var(--gold)'}}>🔥 {streakDisplay}</div>
             <div style={{fontSize:9, fontWeight:800, color:'var(--text4)'}}>STREAK</div>
           </div>
           <div style={{textAlign:'center'}}>

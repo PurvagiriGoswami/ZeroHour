@@ -1,30 +1,37 @@
 import { useState } from 'react'
-import { useStore } from '../store'
+import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
-import { td } from '../utils'
+import { today, formatDate, calcStreak } from '../utils/dateUtils'
 
-const empty = () => ({ date:td(),wake:'',sleep:'',energy:3,maths:'',eng:'',gs:'',morning:'',night:'',pyqs:'',score:'',gym:false,mock:false,rev:false,notes:'',plan:'' })
+const empty = () => ({ date:today(),wake:'',sleep:'',energy:3,maths:'',eng:'',gs:'',morning:'',night:'',pyqs:'',score:'',gym:false,mock:false,rev:false,notes:'',plan:'' })
 
 export default function DailyLog() {
-  const { state, act } = useStore()
+  const { logs, settings, plannerTasks } = useAppStore(
+    useShallow(s => ({
+      logs: s.logs,
+      settings: s.settings,
+      plannerTasks: s.plannerTasks
+    }))
+  )
+  const setLogs = useAppStore(s => s.setLogs)
   const toast = useToast()
   const confirm = useConfirm()
-  const { logs } = state
   const [form, setForm] = useState(empty())
   const f = form
   const set = k => e => setForm(p=>({...p,[k]:e.target.type==='checkbox'?e.target.checked:e.target.value}))
   const setV = (k,v) => setForm(p=>({...p,[k]:v}))
 
   const existing = logs.find(l=>l.date===f.date)
-  const todayTasks = state.plannerTasks?.filter(t => t.date === f.date) || []
+  const todayTasks = plannerTasks?.filter(t => t.date === f.date) || []
   const planStr = todayTasks.length > 0 ? todayTasks.map(t => `${t.subject}: ${t.topic}`).join(' | ') : 'No specific plan for this date — set your own focus.'
   const plan = planStr
 
   function saveLog() {
-    const entry = {...f, date:f.date||td()}
+    const entry = {...f, date:f.date||today()}
     const newLogs = [...logs.filter(l=>l.date!==entry.date), entry].sort((a,b)=>b.date.localeCompare(a.date))
-    act({type:'SET_LOGS', logs:newLogs})
+    setLogs(newLogs)
     toast('Log saved! ✓','ok')
   }
 
@@ -35,7 +42,7 @@ export default function DailyLog() {
 
   function deleteLog(date) {
     confirm('DELETE LOG','Remove this log entry permanently?',()=>{
-      act({type:'SET_LOGS', logs:logs.filter(l=>l.date!==date)})
+      setLogs(logs.filter(l=>l.date!==date))
       toast('Log deleted','info')
     })
   }

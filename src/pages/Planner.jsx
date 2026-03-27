@@ -1,14 +1,23 @@
 import { useState, useMemo } from 'react'
-import { useStore } from '../store'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { SUBC } from '../data'
 import { getDueVocab } from '../utils/spacedRepetition'
 import { today, formatDate } from '../utils/dateUtils'
+import { EmptyState } from '../components/EmptyState'
 
 export default function Planner() {
-  const { state } = useStore()
-  const { syl, revision, vocab, quizResults, plannerTasks, settings } = state
+  const { syl, revision, vocab, quizResults, plannerTasks, settings } = useAppStore(
+    useShallow(s => ({
+      syl: s.syl,
+      revision: s.revision,
+      vocab: s.vocab,
+      quizResults: s.quizResults,
+      plannerTasks: s.plannerTasks,
+      settings: s.settings
+    }))
+  )
   const setPlannerTasks = useAppStore(s => s.setPlannerTasks)
   const toast = useToast()
 
@@ -195,20 +204,21 @@ export default function Planner() {
           📋 Today's Study Plan — {formatDate(new Date())}
         </div>
         {todayTasks.length === 0 ? (
-          <div className="empty" style={{padding:'40px 0'}}>
-            <div style={{fontSize:48, marginBottom:16}}>📝</div>
-            <div>No tasks planned for today.</div>
-            <div style={{fontSize:13, color:'var(--text4)', marginTop:8}}>Use auto-generate or create manual tasks to get started.</div>
-          </div>
+          <EmptyState 
+            icon="📝" 
+            title="No tasks planned for today. Let the AI generate a strategic plan for you."
+            cta="GENERATE MISSION PLAN" 
+            onAction={generateDailyPlan} 
+          />
         ) : (
-          todayTasks.map(task => (
+          todayTasks.map((task, index) => (
             <div key={task.id} style={{
-              padding:'16px 0', 
-              borderBottom:'1px solid var(--border2)', 
-              display:'flex', 
-              gap:16, 
-              alignItems:'center', 
-              opacity:task.completed?0.6:1,
+              padding: '16px 0', 
+              borderBottom: index === todayTasks.length - 1 ? 'none' : '1px solid var(--border2)', 
+              display: 'flex', 
+              gap: 16, 
+              alignItems: 'center', 
+              opacity: task.completed ? 0.6 : 1,
               transition: 'all 0.2s ease'
             }}>
               <div style={{

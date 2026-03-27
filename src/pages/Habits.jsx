@@ -1,13 +1,20 @@
-import { useMemo } from 'react'
-import { useStore } from '../store'
+import { useState, useMemo } from 'react'
+import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
+import { useToast } from '../Toast'
 import { HABITS } from '../data'
 import { BarChart } from '../Charts'
-import { td } from '../utils'
+import { today as getToday, formatDate } from '../utils/dateUtils'
 
 export default function Habits() {
-  const { state, act } = useStore()
-  const { habs } = state
-  const today = td()
+  const { habs } = useAppStore(
+    useShallow(s => ({
+      habs: s.habs
+    }))
+  )
+  const setHabs = useAppStore(s => s.setHabs)
+  const toast = useToast()
+  const today = getToday()
   const te = habs.find(h=>h.date===today)||{date:today}
   const done = HABITS.filter(h=>te[h.i]).length
 
@@ -27,15 +34,15 @@ export default function Habits() {
 
   function toggleHabit(hid) {
     const ex = habs.find(h=>h.date===today)||{date:today}
-    act({type:'SET_HABS', habs:[...habs.filter(h=>h.date!==today),{...ex,[hid]:!ex[hid]}]})
+    setHabs([...habs.filter(h=>h.date!==today),{...ex,[hid]:!ex[hid]}])
   }
   function saveHabFocus(val) {
     const ex = habs.find(h=>h.date===today)||{date:today}
-    act({type:'SET_HABS', habs:[...habs.filter(h=>h.date!==today),{...ex,focus:val}]})
+    setHabs([...habs.filter(h=>h.date!==today),{...ex,focus:val}])
   }
   function saveHabNote(val) {
     const ex = habs.find(h=>h.date===today)||{date:today}
-    act({type:'SET_HABS', habs:[...habs.filter(h=>h.date!==today),{...ex,notes:val}]})
+    setHabs([...habs.filter(h=>h.date!==today),{...ex,notes:val}])
   }
 
   const habStats = HABITS.map(h=>{

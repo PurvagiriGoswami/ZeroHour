@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { useStore } from '../store'
+import { useState, useMemo } from 'react'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
 import { getVocabRevisionStatus } from '../utils/spacedRepetition'
 import { formatDate, today } from '../utils/dateUtils'
+import { EmptyState } from '../components/EmptyState'
 
 function createVocabEntry({ word, meaning, example }) {
   return {
@@ -23,12 +24,15 @@ function createVocabEntry({ word, meaning, example }) {
 const TAGS = ['English']
 
 export default function Vocab() {
-  const { state } = useStore()
+  const { vocab, revisionCycles } = useAppStore(
+    useShallow(s => ({
+      vocab: s.vocab,
+      revisionCycles: s.revisionCycles
+    }))
+  )
+  const setVocab = useAppStore(s => s.setVocab)
   const toast = useToast()
   const confirm = useConfirm()
-  const { vocab } = state
-  const revisionCycles = useAppStore(s => s.revisionCycles)
-  const setVocab = useAppStore(s => s.setVocab)
 
   const [form, setForm] = useState({ word:'', meaning:'', example:'', tag:'English' })
   const [filter, setFilter] = useState('All')
@@ -135,11 +139,18 @@ export default function Vocab() {
       <div className="card" style={{borderRadius:20, padding:24}}>
         <div className="card-title" style={{fontSize:18, marginBottom:20}}>📖 Word Bank ({filtered.length}{filter!=='All'||showImportant||search?' filtered':''})</div>
         {filtered.length===0 ? (
-          <div style={{textAlign:'center', padding:'48px 20px'}}>
-            <div style={{fontSize:40, marginBottom:12}}>📖</div>
-            <div style={{fontSize:15, fontWeight:700, color:'var(--text3)', marginBottom:8}}>No words found</div>
-            <div style={{fontSize:13, color:'var(--text4)'}}>Add your first word using the form above.</div>
-          </div>
+          <EmptyState 
+            icon="📖" 
+            title={search || filter !== 'All' || showImportant ? "No words match your filters." : "Your word bank is empty."} 
+            cta={search || filter !== 'All' || showImportant ? "CLEAR FILTERS" : "ADD YOUR FIRST WORD"} 
+            onAction={() => {
+              if (search || filter !== 'All' || showImportant) {
+                setSearch(''); setFilter('All'); setShowImportant(false);
+              } else {
+                document.querySelector('.inp')?.focus();
+              }
+            }} 
+          />
         ) : filtered.map(v=>{
           const revStatus = getVocabRevisionStatus(v, revisionCycles)
           const isFlipped = flippedId === v.id

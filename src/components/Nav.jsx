@@ -1,12 +1,27 @@
+import { useShallow } from 'zustand/react/shallow'
 import { TABS } from '../data'
 import { auth } from '../firebase'
 import { useAppStore } from '../store/useStore'
+import { getTopicRevisionStatus } from '../utils/spacedRepetition'
 
 export function SideMenu({ active, onNav, isOpen, isCollapsed, onClose }) {
   const user = auth.currentUser
-  const settings = useAppStore(s => s.settings)
+  const { settings, revision, syl, revisionCycles } = useAppStore(
+    useShallow(s => ({
+      settings: s.settings,
+      revision: s.revision,
+      syl: s.syl,
+      revisionCycles: s.revisionCycles
+    }))
+  )
   const name = user?.displayName || settings.name || 'User'
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase()
+
+  const overdueCount = syl.filter(t => {
+    const rv = revision.find(r => r.topicId === t.id) || {}
+    const status = getTopicRevisionStatus(t, rv, revisionCycles)
+    return status && status.isDue
+  }).length
 
   return (
     <>
@@ -24,6 +39,7 @@ export function SideMenu({ active, onNav, isOpen, isCollapsed, onClose }) {
           <div className="sidemenu-items">
             {TABS.map(t => {
               const isProfile = t.id === 'profile'
+              const isRevision = t.id === 'rev'
               return (
                 <button
                   key={t.id}
@@ -44,6 +60,21 @@ export function SideMenu({ active, onNav, isOpen, isCollapsed, onClose }) {
                           {initials}
                         </div>
                       )
+                    ) : isRevision ? (
+                      <div style={{ position: 'relative', display: 'inline-flex' }}> 
+                        {t.icon}
+                        {overdueCount > 0 && ( 
+                          <span style={{ 
+                            position: 'absolute', top: -4, right: -6, 
+                            background: '#E24B4A', color: '#fff', 
+                            borderRadius: 10, fontSize: 10, fontWeight: 500, 
+                            padding: '1px 5px', minWidth: 16, textAlign: 'center', 
+                            lineHeight: '16px' 
+                          }}> 
+                            {overdueCount > 99 ? '99+' : overdueCount} 
+                          </span> 
+                        )} 
+                      </div> 
                     ) : t.icon}
                   </span>
                   <span className="sidemenu-label">{t.label}</span>

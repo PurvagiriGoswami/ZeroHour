@@ -98,6 +98,27 @@ export function markTopicRevisionDone(existing, round) {
   return up
 }
 
+export function getNextDueDate(topic) {
+  const days = [1, 3, 7, 15][topic.round - 1] || 15;
+  const last = new Date(topic.lastRevisedAt);
+  last.setDate(last.getDate() + days);
+  return last.toISOString().split('T')[0];
+}
+
+export function isOverdue(topic) {
+  const due = getNextDueDate(topic);
+  return due <= new Date().toISOString().split('T')[0];
+}
+
+export function advanceRound(topic) {
+  const nextRound = Math.min(topic.round + 1, 4);
+  return {
+    ...topic,
+    round: nextRound,
+    lastRevisedAt: new Date().toISOString().split('T')[0]
+  };
+}
+
 /**
  * Unmark a revision round
  */

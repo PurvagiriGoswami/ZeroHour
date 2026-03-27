@@ -1,29 +1,70 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
 import { useStore } from './store'
 import { useAppStore } from './store/useStore'
 import { useAuth } from './context/AuthContext'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import { SideMenu } from './components/Nav'
-import Dashboard  from './pages/Dashboard'
-import DailyLog   from './pages/DailyLog'
-import Habits     from './pages/Habits'
-import Syllabus   from './pages/Syllabus'
-import Mocks      from './pages/Mocks'
-import PYQLog     from './pages/PYQLog'
-import Revision   from './pages/Revision'
-import Vocab      from './pages/Vocab'
-import Quiz       from './pages/Quiz'
-import Planner    from './pages/Planner'
-import Analytics  from './pages/Analytics'
-import Settings   from './pages/Settings'
-import Profile    from './pages/Profile'
-import Simulator  from './pages/Simulator'
-import Onboarding from './pages/Onboarding'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DailyLog  = lazy(() => import('./pages/DailyLog'));
+const Habits    = lazy(() => import('./pages/Habits'));
+const Syllabus  = lazy(() => import('./pages/Syllabus'));
+const Mocks     = lazy(() => import('./pages/Mocks'));
+const PYQLog    = lazy(() => import('./pages/PYQLog'));
+const Revision  = lazy(() => import('./pages/Revision'));
+const Vocab     = lazy(() => import('./pages/Vocab'));
+const Quiz      = lazy(() => import('./pages/Quiz'));
+const Planner   = lazy(() => import('./pages/Planner'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Settings  = lazy(() => import('./pages/Settings'));
+const Profile   = lazy(() => import('./pages/Profile'));
+const Simulator = lazy(() => import('./pages/Simulator'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+
 import { TABS } from './data'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from './firebase'
+
+const ZeroHourLoader = ({ fullScreen = false }) => (
+  <div style={{
+    position: fullScreen ? 'fixed' : 'relative',
+    inset: fullScreen ? 0 : 'auto',
+    zIndex: fullScreen ? 9999 : 1,
+    height: fullScreen ? '100vh' : 'auto', 
+    width: fullScreen ? '100vw' : '100%', 
+    display: 'flex', 
+    flexDirection: 'column',
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    padding: fullScreen ? '0' : '100px 0', 
+    color: 'var(--indigo)',
+    background: fullScreen ? '#0d1117' : 'transparent',
+    gap: 24,
+    animation: fullScreen ? 'fadeIn 0.5s ease-out' : 'none'
+  }}>
+    <div style={{ position: 'relative', width: fullScreen ? 240 : 60, height: fullScreen ? 240 : 60 }}>
+      <img src="/assets/branding/ZeroHour_Main_logo.svg"
+        onError={e => { e.target.src = '/assets/branding/logo-1024-transparent.png' }}
+        alt="ZeroHour"
+        style={{ width: '100%', height: '100%', objectFit: 'contain',
+          filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.5))', 
+          zIndex: 2,
+       }} />
+    </div>
+    <div className="pulsing" style={{ 
+      fontWeight: '800', 
+      letterSpacing: fullScreen ? '3px' : '2px', 
+      fontSize: fullScreen ? '13px' : '11px',
+      textTransform: 'uppercase',
+      color: 'var(--indigo)'
+    }}>
+      {fullScreen ? 'LOADING MISSION...' : 'INITIALIZING...'}
+    </div>
+  </div>
+);
 
 const PAGES = {
   dash:      Dashboard,
@@ -145,24 +186,8 @@ export default function App() {
     }
   }, [settings.fontSize])
 
-  if (user === undefined) {
-    return (
-      <div style={{
-        height: '100vh',
-        width: '100vw',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#0d1117',
-        color: '#58a6ff',
-        fontSize: '14px',
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: '2px'
-      }}>
-        <div className="pulsing">Initializing Systems...</div>
-      </div>
-    )
+  if (user === undefined || isInitialLoad || !hasHydrated) {
+    return <ZeroHourLoader fullScreen />
   }
 
   if (user === null) {
@@ -255,60 +280,37 @@ export default function App() {
 
   const PageComponent = PAGES[tab] || Dashboard
 
-  // The main loading condition. Show loading screen if it's the initial app load
-  // OR if the store has not been hydrated with Firebase data yet.
-  if (isInitialLoad || !hasHydrated) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'var(--bg)', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 16,
-        animation: 'fadeIn 0.5s ease-out'
-      }}>
-        <div style={{ position: 'relative', width: 240, height: 240 }}>
-          <img src="/assets/branding/ZeroHour_Main_logo.svg"
-            onError={e => { e.target.src = '/assets/branding/logo-1024-transparent.png' }}
-            alt="ZeroHour"
-            style={{ width: '100%', height: '100%', objectFit: 'contain',
-              filter: 'drop-shadow(0 0 20px rgba(99,102,241,0.5))', 
-              zIndex: 2,
-           }} />
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--text4)', fontWeight: 700,
-          letterSpacing: 3, textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace" }}>
-          Loading...
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="app-shell" style={globalStyles}>
-      {/* Main Header */}
-      <Header 
-        onNav={navigate} 
-        onMenuToggle={handleMenuToggle} 
-        isMenuOpen={isMobile ? isMenuOpen : false} 
-      />
-
-      <div className={`app-body ${isMenuCollapsed ? 'menu-collapsed' : ''}`}>
-        <SideMenu 
-          active={tab} 
+    <ErrorBoundary>
+      <div className="app-shell" style={globalStyles}>
+        {/* Main Header */}
+        <Header 
           onNav={navigate} 
-          isOpen={isMenuOpen}
-          isCollapsed={isMenuCollapsed}
-          onClose={() => setIsMenuOpen(false)}
+          onMenuToggle={handleMenuToggle} 
+          isMenuOpen={isMobile ? isMenuOpen : false} 
         />
 
-        <div ref={scrollRef} className="page-content"
-          onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-          <PageComponent onNav={navigate} key={tab}/>
-          
-          {/* Premium Professional Footer */}
-          <Footer onNav={navigate} />
-        </div>
-      </div>
+        <div className={`app-body ${isMenuCollapsed ? 'menu-collapsed' : ''}`}>
+          <SideMenu 
+            active={tab} 
+            onNav={navigate} 
+            isOpen={isMenuOpen}
+            isCollapsed={isMenuCollapsed}
+            onClose={() => setIsMenuOpen(false)}
+          />
 
-    </div>
+          <div ref={scrollRef} className="page-content"
+            onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+            <Suspense fallback={<ZeroHourLoader />}>
+              <PageComponent onNav={navigate} key={tab}/>
+            </Suspense>
+            
+            {/* Premium Professional Footer */}
+            <Footer onNav={navigate} />
+          </div>
+        </div>
+
+      </div>
+    </ErrorBoundary>
   )
 }

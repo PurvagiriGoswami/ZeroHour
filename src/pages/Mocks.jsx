@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { useStore } from '../store'
+import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
 import { LineChart } from '../Charts'
-import { td } from '../utils'
+import { today as getToday } from '../utils/dateUtils'
+import { EmptyState } from '../components/EmptyState'
 
 const emptyForm = () => ({ date:'', exam:'CDS I', maths:'', eng:'', gs:'', silly:'', concept:'', weak:'', take:'', time:'' })
 
 export default function Mocks() {
-  const { state, act } = useStore()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const { mocks, settings } = state
+  const { mocks, settings } = useAppStore(
+    useShallow(s => ({
+      mocks: s.mocks,
+      settings: s.settings
+    }))
+  )
+  const setMocks = useAppStore(s => s.setMocks)
   const [form, setForm] = useState(emptyForm())
   const [showForm, setShowForm] = useState(false)
   const f = form
@@ -24,21 +29,24 @@ export default function Mocks() {
   const best = mocks.length ? Math.max(...mocks.map(m=>m.total||0)) : null
   const scores = [...mocks].reverse().slice(-10).map(m=>m.total||0)
 
+  const toast = useToast()
+  const confirm = useConfirm()
+
   function addMock() {
     const m=+f.maths||0, e=+f.eng||0, g=+f.gs||0
     if(!m&&!e&&!g){ toast('Enter at least one score','warn'); return }
-    act({ type:'SET_MOCKS', mocks:[{
-      id:Date.now(), date:f.date||td(), exam:f.exam||'CDS I',
+    setMocks([{
+      id:Date.now(), date:f.date||getToday(), exam:f.exam||'CDS I',
       maths:m, eng:e, gs:g, total:m+e+g,
       silly:f.silly||0, concept:f.concept||0, weak:f.weak||'', take:f.take||'', time:f.time||''
-    },...mocks]})
+    },...mocks])
     toast(`Mock saved: ${m+e+g}/300`,'ok')
     setShowForm(false); setForm(emptyForm())
   }
 
   function deleteMock(id) {
     confirm('DELETE MOCK','Remove this mock entry permanently?',()=>{
-      act({ type:'SET_MOCKS', mocks:mocks.filter(m=>m.id!==id) })
+      setMocks(mocks.filter(m=>m.id!==id))
       toast('Mock deleted','info')
     })
   }
@@ -77,7 +85,7 @@ export default function Mocks() {
         {showForm && (
           <div style={{animation:'fadeIn .2s ease'}}>
             <div className="g3" style={{marginBottom:16}}>
-              <div><label className="lbl">DATE</label><input type="date" className="inp" style={{borderRadius:10}} value={f.date||td()} onChange={set('date')}/></div>
+              <div><label className="lbl">DATE</label><input type="date" className="inp" style={{borderRadius:10}} value={f.date||getToday()} onChange={set('date')}/></div>
               <div><label className="lbl">EXAM</label>
                 <select className="inp" style={{borderRadius:10}} value={f.exam} onChange={set('exam')}>
                   {['CDS I','CDS II','AFCAT','CDS 2027'].map(s=><option key={s}>{s}</option>)}
@@ -112,7 +120,14 @@ export default function Mocks() {
       {/* Mock list */}
       <div className="card" style={{borderRadius:20, padding:24}}>
         <div className="card-title" style={{fontSize:18, marginBottom:20}}>📋 ALL MOCKS ({mocks.length})</div>
-        {mocks.length===0 ? <div className="empty" style={{padding:'40px 0'}}>// NO MOCKS LOGGED YET</div> : mocks.map(m=>{
+        {mocks.length===0 ? (
+          <EmptyState 
+            icon="📝" 
+            title="No mocks logged yet. Start tracking your performance today." 
+            cta="+ ADD MOCK" 
+            onAction={() => setShowForm(true)} 
+          />
+        ) : mocks.map(m=>{
           const tot = m.total||(m.maths||0)+(m.eng||0)+(m.gs||0)
           const col = tot>=settings.targetIMA?'var(--green)':tot>=120?'var(--gold)':'var(--red)'
           return (

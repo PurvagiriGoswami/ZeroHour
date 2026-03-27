@@ -4,6 +4,7 @@ import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/fires
 import { useAppStore } from '../store/useStore'
 import { useToast } from '../Toast'
 import { SIMULATOR_QUESTIONS } from '../data/simulatorQuestions'
+import { playTimerEndBeep } from '../utils/timerSound'
 
 const MODES = [
   { id: 'cds-en', label: 'CDS English', questions: 100, time: 120, subject: 'English' },
@@ -33,16 +34,18 @@ export default function Simulator() {
   useEffect(() => {
     if (view !== 'exam' || !session) return
 
-    timerRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
+          clearInterval(id)
+          playTimerEndBeep()
           endSimulation()
           return 0
         }
         return t - 1
       })
     }, 1000)
-    return () => clearInterval(timerRef.current)
+    return () => clearInterval(id)
   }, [view, session])
 
   // Keyboard shortcuts

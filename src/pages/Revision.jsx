@@ -1,17 +1,22 @@
 import { useState, useMemo } from 'react'
-import { useStore } from '../store'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { SUBC } from '../data'
 import { DEFAULT_CYCLES } from '../utils/spacedRepetition'
 import { today, formatDate, daysSince } from '../utils/dateUtils'
+import { EmptyState } from '../components/EmptyState'
 
 const SUBS = ['Maths','English','GS','AFCAT']
 
 export default function Revision() {
-  const { state } = useStore()
-  const { syl, revision } = state
-  const revisionCycles = useAppStore(s => s.revisionCycles)
+  const { syl, revision, revisionCycles } = useAppStore(
+    useShallow(s => ({
+      syl: s.syl,
+      revision: s.revision,
+      revisionCycles: s.revisionCycles
+    }))
+  )
   const setRevision = useAppStore(s => s.setRevision)
   const setRevisionCycles = useAppStore(s => s.setRevisionCycles)
   const toast = useToast()
@@ -163,7 +168,14 @@ export default function Revision() {
         <div className="card-title">📋 TOPIC REVISION LOG
           <span style={{fontSize:9, color:'var(--gold)'}}>Smart due: spaced repetition</span>
         </div>
-        {SUBS.filter(s => s !== 'AFCAT').map(sub => {
+        {revision.length === 0 ? (
+          <EmptyState 
+            icon="🔄" 
+            title="No revision data yet. Complete topics in the Course Map to start your spaced repetition journey." 
+            cta="GO TO COURSE MAP" 
+            onAction={() => window.dispatchEvent(new CustomEvent('nav', { detail: 'syl' }))} 
+          />
+        ) : SUBS.filter(s => s !== 'AFCAT').map(sub => {
           const color = SUBC[sub]
           return (
             <div key={sub} style={{marginBottom:12}}>

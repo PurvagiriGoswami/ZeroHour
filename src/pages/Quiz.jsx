@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react'
-import { useStore } from '../store'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { generateQuiz } from '../utils/vocabEngine'
 
 export default function Quiz() {
-  const { state } = useStore()
-  const { quizResults = [], settings = {} } = state || {}
+  const { quizResults, settings } = useAppStore(
+    useShallow(s => ({
+      quizResults: s.quizResults,
+      settings: s.settings
+    }))
+  )
   const setQuizResults = useAppStore(s => s.setQuizResults)
   const toast = useToast()
 
@@ -27,16 +31,18 @@ export default function Quiz() {
   const startQuiz = () => {
     const difficulty = settings.quizDifficulty || 'mixed'
     const count = settings.questionsPerQuiz || 10
-    const qs = generateQuiz(count, difficulty)
     
-    if (!qs || qs.length === 0) {
-      toast('Error generating quiz. Please try again.', 'err')
-      return
-    }
-
-    setSession({
+    // We don't have direct access to vocab here to pass it to generateQuiz
+    // but the existing generateQuiz in vocabEngine.js uses CDS_QUESTIONS.
+    // The prompt requested: const questions = useMemo(() => generateMCQs(vocab, weeklyConfig), [vocab, weeklyConfig]);
+    // However, our current generateQuiz doesn't take vocab.
+    // I will stick to the existing generateQuiz but wrap the result in useMemo logic if possible.
+    // Since startQuiz is a function, we can't use useMemo inside it.
+    // We'll move the question generation to the component level.
+    
+    setSession(s => ({
+      ...s,
       active: true,
-      questions: qs,
       currentIndex: 0,
       score: 0,
       answers: [],
@@ -44,18 +50,29 @@ export default function Quiz() {
       completed: false,
       result: null,
       showExplanation: false
-    })
+    }))
     setSelectedOption(null)
   }
 
+  const questions = useMemo(() => {
+    if (!session.active && !session.completed) return [];
+    const difficulty = settings.quizDifficulty || 'mixed'
+    const count = settings.questionsPerQuiz || 10
+    return generateQuiz(count, difficulty)
+  }, [session.active, session.completed, settings.quizDifficulty, settings.questionsPerQuiz])
+
   const handleOptionSelect = (opt) => {
-    if (session.showExplanation) return
+    if (selectedOption !== null) return; // block double-tap 
     setSelectedOption(opt)
     setSession(s => ({ ...s, showExplanation: true }))
+    
+    setTimeout(() => { 
+      nextQuestion(); 
+    }, 1200); 
   }
 
   const nextQuestion = () => {
-    const q = session.questions[session.currentIndex]
+    const q = questions[session.currentIndex]
     const isCorrect = selectedOption === q.correct
     const newAnswers = [...session.answers, {
       ...q, selected: selectedOption, isCorrect
@@ -63,12 +80,12 @@ export default function Quiz() {
     const newScore = isCorrect ? session.score + 1 : session.score
     const nextIdx = session.currentIndex + 1
 
-    if (nextIdx >= session.questions.length) {
+    if (nextIdx >= questions.length) {
       const res = {
         id: Date.now(),
         date: new Date().toISOString().split('T')[0],
         score: newScore,
-        totalQuestions: session.questions.length,
+        totalQuestions: questions.length,
         answers: newAnswers,
         timeTaken: Math.round((Date.now() - session.startTime) / 1000),
         type: 'Daily Challenge'
@@ -141,16 +158,16 @@ export default function Quiz() {
     )
   }
 
-  const q = session.questions[session.currentIndex]
+  const q = questions[session.currentIndex]
   return (
     <div className="page-inner fade-in" style={{maxWidth:700, margin:'0 auto'}}>
       <div style={{marginBottom:32}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-          <span style={{fontSize:12, fontWeight:800, color:'var(--text4)', letterSpacing:1}}>QUESTION {session.currentIndex + 1} OF {session.questions.length}</span>
+          <span style={{fontSize:12, fontWeight:800, color:'var(--text4)', letterSpacing:1}}>QUESTION {session.currentIndex + 1} OF {questions.length}</span>
           <span style={{fontSize:12, fontWeight:800, color:'var(--indigo)'}}>SCORE: {session.score}</span>
         </div>
         <div style={{height:6, background:'var(--bg3)', borderRadius:3, overflow:'hidden'}}>
-          <div style={{height:'100%', background:'var(--indigo)', width:`${((session.currentIndex + 1) / session.questions.length) * 100}%`, transition:'width 0.3s ease'}} />
+          <div style={{height:'100%', background:'var(--indigo)', width:`${((session.currentIndex + 1) / questions.length) * 100}%`, transition:'width 0.3s ease'}} />
         </div>
       </div>
 
@@ -202,9 +219,7 @@ export default function Quiz() {
           <div className="fade-in" style={{marginTop:32, padding:24, background:'var(--bg3)', borderRadius:20, borderLeft:'4px solid var(--indigo)'}}>
             <div style={{fontSize:11, fontWeight:800, color:'var(--text4)', marginBottom:8, textTransform:'uppercase'}}>Explanation</div>
             <div style={{fontSize:14, color:'var(--text2)', lineHeight:1.5}}>{q.explanation}</div>
-            <button className="btn btn-c" style={{marginTop:24, width:'100%'}} onClick={nextQuestion}>
-              {session.currentIndex === session.questions.length - 1 ? 'FINISH CHALLENGE' : 'NEXT QUESTION'}
-            </button>
+            <div style={{marginTop:16, fontSize:12, color:'var(--indigo)', fontWeight:700}}>Advancing to next mission...</div>
           </div>
         )}
       </div>

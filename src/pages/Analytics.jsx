@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useStore } from '../store'
+import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { SUBC } from '../data'
 import { getWeaknessLevel, analyzeSubjectPerformance, analyzeTopicPerformance, getPerformanceTrend, getOverallAccuracy } from '../utils/weaknessEngine'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts'
@@ -8,11 +9,14 @@ import SafeChart from '../components/SafeChart'
 const CHART_COLORS = ['#ffd700', '#00d4ff', '#39ff14', '#bf80ff', '#ff3333', '#ff8888']
 
 export default function Analytics() {
-  const { state } = useStore()
-  const quizResults = state?.quizResults || []
-  const mocks = state?.mocks || []
-  const syl = state?.syl || []
-  const vocab = state?.vocab || []
+  const { quizResults, mocks, syl, vocab } = useAppStore(
+    useShallow(s => ({
+      quizResults: s.quizResults,
+      mocks: s.mocks,
+      syl: s.syl,
+      vocab: s.vocab
+    }))
+  )
 
   const overallAcc = getOverallAccuracy(quizResults) || 0
   const overall = getWeaknessLevel(overallAcc) || { color: 'var(--text4)', emoji: '❓', label: 'Incomplete' }

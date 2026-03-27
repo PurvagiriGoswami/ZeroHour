@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { useStore } from '../store'
 import { useAppStore } from '../store/useStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
 import { makeSyl } from '../data'
@@ -9,12 +9,26 @@ import { DEFAULT_CYCLES } from '../utils/spacedRepetition'
 import { exportToExcel, importFromExcel } from '../services/excelService'
 
 export default function Settings() {
-  const { state } = useStore()
-  const toast = useToast()
-  const confirm = useConfirm()
-  const { settings, syncStatus, syl, mocks, logs, habs, revision, vocab, pyqlog, pomoSessions, quizResults, plannerTasks } = state
+  const { settings, syncStatus, syl, mocks, logs, habs, revision, vocab, pyqlog, pomoSessions, quizResults, plannerTasks } = useAppStore(
+    useShallow(s => ({
+      settings: s.settings,
+      syncStatus: s.syncStatus,
+      syl: s.syl,
+      mocks: s.mocks,
+      logs: s.logs,
+      habs: s.habs,
+      revision: s.revision,
+      vocab: s.vocab,
+      pyqlog: s.pyqlog,
+      pomoSessions: s.pomoSessions,
+      quizResults: s.quizResults,
+      plannerTasks: s.plannerTasks
+    }))
+  )
   const store = useAppStore()
-  const fileRef = useRef(null)
+    const toast = useToast()
+    const confirm = useConfirm()
+    const fileRef = useRef(null)
 
   const [showResetModal, setShowResetModal] = useState(false)
   const [resetOptions, setResetOptions] = useState({
@@ -100,17 +114,36 @@ export default function Settings() {
         }
       } else if (file.name.endsWith('.json')) {
         const text = await file.text()
-        const data = JSON.parse(text)
-        if (data.vocab) store.setVocab(data.vocab)
-        if (data.syl) store.setSyl(data.syl)
-        if (data.mocks) store.setMocks(data.mocks)
-        if (data.logs) store.setLogs(data.logs)
-        if (data.habs) store.setHabs(data.habs)
-        if (data.revision) store.setRevision(data.revision)
-        if (data.quizResults) store.setQuizResults(data.quizResults)
-        if (data.plannerTasks) store.setPlannerTasks(data.plannerTasks)
-        if (data.settings) store.setSettings(data.settings)
-        toast('✅ Data imported from JSON', 'ok')
+        
+        function validateBackup(data) { 
+          const required = ['vocab', 'revision', 'mockTests', 'dailyLogs', 'habits']; 
+          // Note: the mapping from keys in data to store actions might differ, 
+          // but we follow the validation requirements exactly as requested.
+          const missing = required.filter(k => !Object.prototype.hasOwnProperty.call(data, k)); 
+          if (missing.length) throw new Error(`Missing keys: ${missing.join(', ')}`); 
+          if (!Array.isArray(data.vocab)) throw new Error('vocab must be an array'); 
+          // The prompt says mockTests, but local state uses 'mocks'
+          if (!Array.isArray(data.mockTests)) throw new Error('mockTests must be an array'); 
+          return true; 
+        } 
+
+        try { 
+          const parsed = JSON.parse(text); 
+          validateBackup(parsed); 
+          // Mapping required keys to existing store structure
+          if (parsed.vocab) store.setVocab(parsed.vocab)
+          if (parsed.syl) store.setSyl(parsed.syl)
+          if (parsed.mockTests) store.setMocks(parsed.mockTests) // using mockTests as requested
+          if (parsed.dailyLogs) store.setLogs(parsed.dailyLogs) // using dailyLogs as requested
+          if (parsed.habits) store.setHabs(parsed.habits) // using habits as requested
+          if (parsed.revision) store.setRevision(parsed.revision)
+          if (parsed.quizResults) store.setQuizResults(parsed.quizResults)
+          if (parsed.plannerTasks) store.setPlannerTasks(parsed.plannerTasks)
+          if (parsed.settings) store.setSettings(parsed.settings)
+          toast('Backup imported successfully', 'ok')
+        } catch (e) { 
+          toast(`Import failed: ${e.message}`, 'err'); 
+        } 
       }
     } catch (err) {
       console.error(err)
@@ -198,6 +231,18 @@ export default function Settings() {
           <div style={{fontSize:24}}>📊</div>
           <div className="card-title" style={{margin:0, fontSize:20, color:'var(--cyan)'}}>System & Data Archive</div>
         </div>
+
+        <div style={{ 
+          background: 'var(--color-bg-warning, #FAEEDA)', 
+          border: '1px solid #EF9F27', 
+          borderRadius: 8, 
+          padding: '10px 14px', 
+          fontSize: 13, 
+          marginBottom: 12, 
+          color: '#854F0B' 
+        }}> 
+          ⚠️ Currently syncing to a shared cloud document. If two browsers are open simultaneously, they will overwrite each other's data. Per-user private storage is coming in v8 with authentication. 
+        </div> 
         
         <div className="g2" style={{marginBottom:32}}>
           <div style={{background:'var(--bg2)', padding:24, borderRadius:20, border:'1px solid var(--border)'}}>
