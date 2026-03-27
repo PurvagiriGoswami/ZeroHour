@@ -1,11 +1,21 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+async function callGemini(prompt) {
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  })
+  if (!res.ok) throw new Error(`Gemini API error: ${res.status}`)
+  const { text, error } = await res.json()
+  if (error) throw new Error(error)
+  return text
+}
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(API_KEY);
+function parseJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim()
+  return JSON.parse(clean)
+}
 
 export const extractQuestionsFromText = async (rawText) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
   const prompt = `
     You are an expert CDS Exam examiner. I will provide you with raw text extracted from a CDS exam PDF.
     Your task is to extract all valid MCQs (Multiple Choice Questions) from this text.
@@ -41,24 +51,17 @@ export const extractQuestionsFromText = async (rawText) => {
     
     RAW TEXT:
     ${rawText}
-  `;
-
+  `
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    // Remove potential markdown code blocks if Gemini includes them
-    const jsonString = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(jsonString);
+    const text = await callGemini(prompt)
+    return parseJSON(text)
   } catch (error) {
-    console.error("Error extracting questions:", error);
-    throw error;
+    console.error('Error extracting questions:', error)
+    throw error
   }
-};
+}
 
 export const generateMockTest = async (pyqs, subject) => {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
   const prompt = `
     You are an AI engine for ZeroHour, a defence exam prep platform.
     Your task is to generate a CDS-style mock test for the subject: ${subject}.
@@ -84,7 +87,7 @@ export const generateMockTest = async (pyqs, subject) => {
       },
       "questions": [
         {
-          "source": "PYQ" or "AI",
+          "source": "PYQ or AI",
           "subject": "${subject}",
           "topic": "...",
           "question": "...",
@@ -98,22 +101,18 @@ export const generateMockTest = async (pyqs, subject) => {
     }
 
     PYQs PROVIDED:
-    ${JSON.stringify(pyqs.slice(0, 100))} // Limiting to 100 for context window efficiency
+    ${JSON.stringify(pyqs.slice(0, 100))}
 
     STRICT RULES:
     - Output ONLY valid JSON.
     - Ensure all answers are correct.
     - Maintain high-quality CDS-level language.
-  `;
-
+  `
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    const jsonString = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(jsonString);
+    const text = await callGemini(prompt)
+    return parseJSON(text)
   } catch (error) {
-    console.error("Error generating mock test:", error);
-    throw error;
+    console.error('Error generating mock test:', error)
+    throw error
   }
-};
+}
