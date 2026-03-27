@@ -79,6 +79,7 @@ export const TABS = [
   { id:'syl',      label:'Course Map',   icon:'📚',  short:'SYL' },
   { id:'mocks',    label:'Test Series',  icon:'📝',  short:'TST' },
   { id:'pyq',      label:'Exam Archive', icon:'📋',  short:'PYQ' },
+  { id:'pyqrepo',  label:'PYQ Bank',     icon:'🗂️',  short:'BNK' },
   { id:'rev',      label:'Smart Revision', icon:'🔄',  short:'REV' },
   { id:'vocab',    label:'Word Power',   icon:'📖',  short:'VOC' },
   { id:'quiz',     label:'Daily Quiz',   icon:'🧠',  short:'QIZ' },

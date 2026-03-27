@@ -75,7 +75,7 @@ const PAGES = {
   profile:   Profile,
   simulator: Simulator,
   ai:        AIInsights,
-  pyq:        PYQRepository,
+  pyqrepo:   PYQRepository,
 }
 
 export default function App() {
