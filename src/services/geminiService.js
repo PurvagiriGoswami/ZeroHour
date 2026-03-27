@@ -19,36 +19,30 @@ export const extractQuestionsFromText = async (rawText) => {
   const prompt = `
     You are an expert CDS Exam examiner. I will provide you with raw text extracted from a CDS exam PDF.
     Your task is to extract all valid MCQs (Multiple Choice Questions) from this text.
-    
-    For each question, identify:
-    1. The question statement.
-    2. Four options (A, B, C, D).
-    3. The correct answer (locate it from the text, often in an answer key or explanation section).
-    4. The subject (GK, English, or Mathematics).
-    5. The topic and subtopic (auto-detect based on content).
-    6. The difficulty level (easy, medium, hard).
-    7. The year (if mentioned in the text).
 
-    Format the output as a JSON array of objects with the following structure:
+    EXTRACTION RULES:
+    - Extract ONLY complete MCQs with all 4 options
+    - Each question must have: question text, 4 options (A/B/C/D), correct answer, subject, topic, year, difficulty
+    - Ignore incomplete questions, instructions, or non-MCQ content
+    - Infer subject from context (Maths/English/General Knowledge)
+    - Estimate difficulty: easy/medium/hard based on complexity
+    - Generate a brief explanation for the correct answer
+
+    OUTPUT FORMAT (strict JSON array):
     [
       {
-        "subject": "...",
-        "topic": "...",
-        "subtopic": "...",
-        "question": "...",
-        "options": ["...", "...", "...", "..."],
-        "correct_answer": "...",
-        "year": "...",
-        "difficulty": "..."
+        "id": "unique_id",
+        "subject": "Maths|English|General Knowledge",
+        "topic": "topic name",
+        "year": 2023,
+        "difficulty": "easy|medium|hard",
+        "question": "question text",
+        "options": ["option A", "option B", "option C", "option D"],
+        "correct_answer": "A|B|C|D",
+        "explanation": "brief explanation"
       }
     ]
 
-    STRICT RULES:
-    - Output ONLY valid JSON. No preamble, no markdown code blocks, just the JSON array.
-    - If a question is incomplete or an answer cannot be found, ignore it.
-    - Clean any broken text or formatting issues.
-    - Ensure subject is one of: "GK", "English", "Mathematics".
-    
     RAW TEXT:
     ${rawText}
   `
@@ -73,14 +67,13 @@ export const generateMockTest = async (pyqs, subject) => {
     - 40% PYQs: Select the most relevant 40 questions from the provided PYQs.
     - 60% AI-generated: Generate 60 NEW questions that strictly follow the CDS exam style and pattern.
     - Distribution: 30% easy, 50% medium, 20% hard.
-    - Use formats like "Which of the following...", "Consider the following statements...", etc.
-    - Do NOT duplicate any question.
-    - The mock test must feel realistic and mimic the actual CDS exam difficulty.
 
-    Format the final output as a JSON object with this EXACT structure:
+    OUTPUT FORMAT (strict JSON):
     {
       "testId": "zerohour_dynamic_mock_${subject.toLowerCase()}",
       "metadata": {
+        "subject": "${subject}",
+        "totalQuestions": 100,
         "pyqPercentage": 40,
         "generatedPercentage": 60,
         "difficultyDistribution": { "easy": 30, "medium": 50, "hard": 20 }
@@ -92,12 +85,11 @@ export const generateMockTest = async (pyqs, subject) => {
           "topic": "...",
           "question": "...",
           "options": ["A", "B", "C", "D"],
-          "correct_answer": "..."
+          "correct_answer": "A|B|C|D",
+          "explanation": "...",
+          "difficulty": "easy|medium|hard"
         }
-      ],
-      "timeLimit": 7200,
-      "negativeMarking": true,
-      "markingScheme": { "correct": 1, "wrong": -0.33, "unattempted": 0 }
+      ]
     }
 
     PYQs PROVIDED:
