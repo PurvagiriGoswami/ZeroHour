@@ -4,6 +4,7 @@ import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/fires
 import { useAppStore } from '../store/useStore'
 import { useToast } from '../Toast'
 import { SIMULATOR_QUESTIONS } from '../data/simulatorQuestions'
+import { ENHANCED_PYQ_BANK } from '../data/enhancedPyqBank'
 import { playTimerEndBeep } from '../utils/timerSound'
 
 const MODES = [
@@ -11,6 +12,7 @@ const MODES = [
   { id: 'cds-gk', label: 'CDS GK', questions: 100, time: 120, subject: 'GK' },
   { id: 'cds-mt', label: 'CDS Maths', questions: 100, time: 120, subject: 'Maths' },
   { id: 'afcat',  label: 'AFCAT', questions: 100, time: 120, subject: 'Mixed' },
+  { id: 'ai-mock', label: 'AI Dynamic Mock', questions: 100, time: 120, subject: 'AI', isAI: true },
   { id: 'custom', label: 'Custom Challenge', questions: 50, time: 60, subject: 'Mixed' }
 ]
 
@@ -26,7 +28,26 @@ export default function Simulator() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [responses, setResponses] = useState({})
   const [marked, setMarked] = useState(new Set())
+  const [dynamicMock, setDynamicMock] = useState(null)
   const timerRef = useRef(null)
+
+  // Load dynamic mock if it exists
+  useEffect(() => {
+    const loadMock = async () => {
+      try {
+        const m = await import('../data/dynamic_mock_test.json');
+        if (m && m.default && m.default.questions) {
+          setDynamicMock(m.default);
+          console.log('Dynamic mock loaded successfully');
+        } else {
+          console.log('Dynamic mock file is empty or invalid format');
+        }
+      } catch (err) {
+        console.log('Dynamic mock not found or error loading:', err.message);
+      }
+    };
+    loadMock();
+  }, [])
 
   // ── Hooks (Must be top-level) ──
 
@@ -63,10 +84,29 @@ export default function Simulator() {
   }, [view, session, currentIndex])
 
   function startSimulation() {
-    // Randomly sample questions
-    const pool = SIMULATOR_QUESTIONS.filter(q => mode.subject === 'Mixed' || q.subject === mode.subject)
-    const shuffled = [...pool].sort(() => 0.5 - Math.random())
-    const selected = shuffled.slice(0, mode.questions)
+    let selected = []
+    
+    if (mode.id === 'ai-mock') {
+      // Advanced randomized generation from 500+ question bank
+      const pool = [...ENHANCED_PYQ_BANK]
+      
+      // Adaptive Difficulty Logic:
+      // Distribution: 20% Hard, 50% Medium, 30% Easy
+      const hardCount = Math.floor(mode.questions * 0.2)
+      const medCount = Math.floor(mode.questions * 0.5)
+      const easyCount = mode.questions - (hardCount + medCount)
+
+      const hards = pool.filter(q => q.difficulty === 'hard').sort(() => 0.5 - Math.random()).slice(0, hardCount)
+      const meds = pool.filter(q => q.difficulty === 'medium').sort(() => 0.5 - Math.random()).slice(0, medCount)
+      const easys = pool.filter(q => q.difficulty === 'easy').sort(() => 0.5 - Math.random()).slice(0, easyCount)
+      
+      selected = [...hards, ...meds, ...easys].sort(() => 0.5 - Math.random())
+    } else {
+      // Randomly sample questions from legacy bank
+      const pool = SIMULATOR_QUESTIONS.filter(q => mode.subject === 'Mixed' || q.subject === mode.subject)
+      const shuffled = [...pool].sort(() => 0.5 - Math.random())
+      selected = shuffled.slice(0, mode.questions)
+    }
 
     const newSession = {
       mode,
@@ -147,15 +187,19 @@ export default function Simulator() {
                 border: `1px solid ${mode.id === m.id ? 'var(--indigo)' : 'var(--border)'}`,
                 background: mode.id === m.id ? 'rgba(99,102,241,0.1)' : 'var(--bg2)',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                cursor: 'pointer', position: 'relative', overflow: 'hidden'
+                cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                opacity: m.isAI && !dynamicMock ? 0.6 : 1
               }}
             >
               {mode.id === m.id && <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: 'var(--indigo)' }} />}
-              <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px', color: mode.id === m.id ? 'var(--text)' : 'var(--text2)' }}>{m.label}</div>
+              <div style={{ fontSize: '18px', fontWeight: '800', marginBottom: '8px', color: mode.id === m.id ? 'var(--text)' : 'var(--text2)' }}>
+                {m.label} {m.isAI && <span style={{ fontSize: '10px', background: 'var(--indigo)', color: 'white', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px' }}>AI POWERED</span>}
+              </div>
               <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--text4)', fontWeight: '700' }}>
                 <span>{m.questions} QS</span>
                 <span>•</span>
                 <span>{m.time} MIN</span>
+                {m.isAI && !dynamicMock && <span style={{ color: 'var(--red)' }}>• NOT GENERATED</span>}
               </div>
             </button>
           ))}
@@ -234,7 +278,15 @@ export default function Simulator() {
                 </button>
               </div>
 
-              <div style={{ fontSize: '22px', fontWeight: '800', lineHeight: 1.4, marginBottom: '40px' }}>{q.question}</div>
+              <div style={{ fontSize: '22px', fontWeight: '800', lineHeight: 1.4, marginBottom: '24px' }}>{q.question}</div>
+              
+              {q.type && (
+                <div style={{ marginBottom: '24px' }}>
+                  <span style={{ fontSize: '10px', background: 'var(--bg3)', padding: '4px 10px', borderRadius: '4px', color: 'var(--indigo)', fontWeight: '900', textTransform: 'uppercase' }}>
+                    {q.type} Question
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {['A','B','C','D'].map((key, i) => (
@@ -326,6 +378,29 @@ export default function Simulator() {
 
           <button className="btn btn-c" style={{ width: '100%', marginTop: '48px' }} onClick={() => setView('lobby')}>RETURN TO COMMAND CENTER</button>
         </div>
+
+        {/* AI Insight Section for Result */}
+        {session.mode.isAI && (
+          <div className="card" style={{ padding: '40px', borderRadius: '32px', background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '900', marginBottom: '24px', fontFamily: "'Orbitron', sans-serif" }}>PREDICTIVE PERFORMANCE ANALYSIS</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {session.questions.map((q, i) => {
+                const isCorrect = responses[i] === q.correct_answer
+                if (isCorrect) return null // Only show explanations for mistakes or unattempted
+                return (
+                  <div key={i} style={{ padding: '24px', borderRadius: '20px', background: 'var(--bg3)', borderLeft: '4px solid var(--red)' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '800', marginBottom: '12px', color: 'var(--text2)' }}>QUESTION {i + 1} • {q.topic}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '16px' }}>{q.question}</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text4)', background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', lineHeight: 1.6 }}>
+                      <strong style={{ color: 'var(--indigo)', display: 'block', marginBottom: '8px' }}>AI EXPLANATION:</strong>
+                      {q.explanation || "No detailed explanation available for this PYQ."}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
     )
   }

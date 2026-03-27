@@ -84,12 +84,13 @@ export const TABS = [
   { id:'quiz',     label:'Daily Quiz',   icon:'🧠',  short:'QIZ' },
   { id:'planner',  label:'Schedule',     icon:'📋',  short:'PLN' },
   { id:'analytics',label:'Performance',  icon:'📈',  short:'ANL' },
+  { id:'ai',       label:'AI Insights',  icon:'🧠',  short:'AI'  },
   { id:'simulator',label:'Simulator',    icon:'🎮',  short:'SIM' },
   { id:'profile',  label:'Profile',      icon:'👤',  short:'PRO' },
   { id:'settings', label:'Settings',     icon:'⚙',   short:'SET' },
 ]
 
-export const MOB_TAB_ORDER = ['dash','daily','syl','mocks','habits','pyq','rev','vocab','quiz','planner','analytics','simulator','profile','settings']
+export const MOB_TAB_ORDER = ['dash','daily','syl','mocks','habits','pyq','rev','vocab','quiz','planner','analytics','ai','simulator','profile','settings']
 
 export function makeSyl() {
   return RAW_SYLLABUS.map(([id,sub,topic,pri,subs, why, questions]) => ({

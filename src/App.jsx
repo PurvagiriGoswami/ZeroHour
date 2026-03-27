@@ -22,6 +22,8 @@ const Analytics = lazy(() => import('./pages/Analytics'));
 const Settings  = lazy(() => import('./pages/Settings'));
 const Profile   = lazy(() => import('./pages/Profile'));
 const Simulator = lazy(() => import('./pages/Simulator'));
+const AIInsights = lazy(() => import('./pages/AIInsights'));
+const PYQRepository = lazy(() => import('./pages/PYQRepository'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
 
 import { TABS } from './data'
@@ -45,7 +47,7 @@ const ZeroHourLoader = ({ fullScreen = false }) => (
     gap: 24,
     animation: fullScreen ? 'fadeIn 0.5s ease-out' : 'none'
   }}>
-    <div style={{ position: 'relative', width: fullScreen ? 240 : 60, height: fullScreen ? 240 : 60 }}>
+    <div style={{ position: 'relative', width: fullScreen ? 940 : 100, height: fullScreen ? 940 : 100 }}>
       <img src="/assets/branding/ZeroHour_Main_logo.svg"
         onError={e => { e.target.src = '/assets/branding/logo-1024-transparent.png' }}
         alt="ZeroHour"
@@ -54,16 +56,7 @@ const ZeroHourLoader = ({ fullScreen = false }) => (
           zIndex: 2,
        }} />
     </div>
-    <div className="pulsing" style={{ 
-      fontWeight: '800', 
-      letterSpacing: fullScreen ? '3px' : '2px', 
-      fontSize: fullScreen ? '13px' : '11px',
-      textTransform: 'uppercase',
-      color: 'var(--indigo)'
-    }}>
-      {fullScreen ? 'LOADING MISSION...' : 'INITIALIZING...'}
-    </div>
-  </div>
+   </div>
 );
 
 const PAGES = {
@@ -81,6 +74,8 @@ const PAGES = {
   settings:  Settings,
   profile:   Profile,
   simulator: Simulator,
+  ai:        AIInsights,
+  pyq:        PYQRepository,
 }
 
 export default function App() {

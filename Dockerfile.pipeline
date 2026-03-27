@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install --production
+
+COPY pipeline/ ./pipeline/
+
+ENV NODE_ENV=production
+ENV PDF_LIBRARY_PATH=/app/library
+ENV INSIGHTS_ROOT=/app/insights
+
+VOLUME ["/app/library", "/app/insights"]
+
+CMD ["node", "pipeline/scheduler.js"]
