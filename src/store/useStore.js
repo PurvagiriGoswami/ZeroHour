@@ -1,0 +1,200 @@
+import { create } from 'zustand'
+import { db, auth } from '../firebase'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { onAuthStateChanged } from 'firebase/auth'
+import { scheduleSyncToFirestore } from '../services/firebaseSync'
+
+// ── LocalStorage helpers ──
+const sg = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb } catch { return fb } }
+const ss = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+
+// ── Zustand Store ──
+export const useAppStore = create((set, get) => ({
+  // ── Auth State ──
+  uid: null,
+  
+  // ── Unified Tactical Data (zh_ prefix) ──
+  zh_sessions: sg('zh_sessions', []),
+  zh_topicMap: sg('zh_topicMap', {}),
+  zh_mocks: sg('zh_mocks', []),
+  zh_weeklyChecks: sg('zh_weeklyChecks', []),
+  zh_pomodoro_today: sg('zh_pomodoro_today', 0),
+  zh_last_pomo_date: sg('zh_last_pomo_date', null),
+  
+  // ── Supporting Data ──
+  quizResults: sg('quizResults', []),
+  plannerTasks: sg('plannerTasks', []),
+
+  settings: sg('zh_settings', {
+    name: 'Aspirant',
+    targetExam: 'CDS',
+    dailyStudyGoal: 6,
+    afcatDate: '',
+    targetIMA: 160,
+    targetAFA: 175,
+    targetAFCAT: 170,
+    fontSize: 'medium',
+    accentColor: '#22c55e',
+  }),
+  
+  syncStatus: 'syncing',
+  hasHydrated: false,
+  _unsub: null,
+
+  // ── Actions ──
+  setSessions: (zh_sessions) => { set({ zh_sessions }); ss('zh_sessions', zh_sessions); get()._scheduleSync() },
+  setTopicMap: (zh_topicMap) => { set({ zh_topicMap }); ss('zh_topicMap', zh_topicMap); get()._scheduleSync() },
+  setZhMocks: (zh_mocks) => { set({ zh_mocks }); ss('zh_mocks', zh_mocks); get()._scheduleSync() },
+  setWeeklyChecks: (zh_weeklyChecks) => { set({ zh_weeklyChecks }); ss('zh_weeklyChecks', zh_weeklyChecks); get()._scheduleSync() },
+  setQuizResults: (quizResults) => { set({ quizResults }); ss('quizResults', quizResults); get()._scheduleSync() },
+  setPlannerTasks: (plannerTasks) => { set({ plannerTasks }); ss('plannerTasks', plannerTasks); get()._scheduleSync() },
+  
+  setPomoToday: (count) => { 
+    const today = new Date().toISOString().split('T')[0]
+    set({ zh_pomodoro_today: count, zh_last_pomo_date: today })
+    ss('zh_pomodoro_today', count)
+    ss('zh_last_pomo_date', today)
+    get()._scheduleSync()
+  },
+
+  setSettings: (updates) => {
+    const current = get().settings
+    const settings = { ...current, ...updates }
+    set({ settings })
+    ss('zh_settings', settings)
+    get()._scheduleSync()
+  },
+
+  // ── Firebase Sync ──
+  _scheduleSync: () => {
+    const uid = get().uid
+    if (!uid) return
+    
+    set({ syncStatus: 'syncing' })
+    ss('_localTs', Date.now())
+    const s = get()
+    const stateToSync = {
+      zh_sessions: s.zh_sessions,
+      zh_topicMap: s.zh_topicMap,
+      zh_mocks: s.zh_mocks,
+      zh_weeklyChecks: s.zh_weeklyChecks,
+      zh_pomodoro_today: s.zh_pomodoro_today,
+      zh_last_pomo_date: s.zh_last_pomo_date,
+      quizResults: s.quizResults,
+      plannerTasks: s.plannerTasks,
+      settings: s.settings
+    }
+    
+    scheduleSyncToFirestore(uid, stateToSync)
+    set({ syncStatus: 'ok' })
+  },
+
+  initFirebase: () => {
+    return new Promise((resolve) => {
+      if (!auth) {
+        set({ uid: null, syncStatus: 'ok', hasHydrated: true })
+        resolve(() => {}) // Return dummy unsubscribe
+        return
+      }
+
+      let resolved = false
+      const unsubAuth = onAuthStateChanged(auth, async (user) => {
+        const currentUnsub = get()._unsub
+        if (typeof currentUnsub === 'function') {
+          currentUnsub()
+          set({ _unsub: null })
+        }
+
+        if (user && db) {
+          const uid = user.uid
+          set({ uid, syncStatus: 'syncing' })
+          
+          try {
+            const snap = await getDoc(doc(db, 'users', uid, 'userData', 'main'))
+            if (snap.exists()) {
+              const data = snap.data()
+              const localTs = sg('_localTs', 0)
+              const remoteTs = data._ts || 0
+              if (remoteTs > localTs) {
+                get()._applyData(data)
+              }
+            }
+            set({ syncStatus: 'ok', hasHydrated: true })
+          } catch (e) {
+            set({ syncStatus: 'err', hasHydrated: true })
+          }
+
+          const unsubSnap = onSnapshot(doc(db, 'users', uid, 'userData', 'main'), snap => {
+            if (snap.exists()) {
+              const data = snap.data()
+              const localTs = sg('_localTs', 0)
+              const remoteTs = data._ts || 0
+              if (remoteTs > localTs) {
+                get()._applyData(data)
+              }
+            }
+            set({ syncStatus: 'ok' })
+          })
+          set({ _unsub: unsubSnap })
+        } else {
+          get()._clearLocalData()
+          set({ uid: null, syncStatus: 'ok', hasHydrated: true, _unsub: null })
+        }
+
+        if (!resolved) {
+          resolved = true
+          resolve(unsubAuth)
+        }
+      })
+    })
+  },
+
+  _applyData: (data) => {
+    if (data.zh_sessions) { set({ zh_sessions: data.zh_sessions }); ss('zh_sessions', data.zh_sessions) }
+    if (data.zh_topicMap) { set({ zh_topicMap: data.zh_topicMap }); ss('zh_topicMap', data.zh_topicMap) }
+    if (data.zh_mocks) { set({ zh_mocks: data.zh_mocks }); ss('zh_mocks', data.zh_mocks) }
+    if (data.zh_weeklyChecks) { set({ zh_weeklyChecks: data.zh_weeklyChecks }); ss('zh_weeklyChecks', data.zh_weeklyChecks) }
+    if (data.zh_pomodoro_today !== undefined) { set({ zh_pomodoro_today: data.zh_pomodoro_today }); ss('zh_pomodoro_today', data.zh_pomodoro_today) }
+    if (data.zh_last_pomo_date) { set({ zh_last_pomo_date: data.zh_last_pomo_date }); ss('zh_last_pomo_date', data.zh_last_pomo_date) }
+    if (data.quizResults) { set({ quizResults: data.quizResults }); ss('quizResults', data.quizResults) }
+    if (data.plannerTasks) { set({ plannerTasks: data.plannerTasks }); ss('plannerTasks', data.plannerTasks) }
+
+    if (data.settings) {
+      const current = get().settings
+      const merged = { ...current, ...data.settings }
+      set({ settings: merged }); ss('zh_settings', merged)
+    }
+  },
+
+  _clearLocalData: () => {
+    set({
+      zh_sessions: [], zh_topicMap: {}, zh_mocks: [],
+      zh_weeklyChecks: [], zh_pomodoro_today: 0, zh_last_pomo_date: null,
+      quizResults: [], plannerTasks: [],
+      settings: {
+        name: 'Aspirant',
+        targetExam: 'CDS',
+        dailyStudyGoal: 6,
+        afcatDate: '',
+        targetIMA: 160,
+        targetAFA: 175,
+        targetAFCAT: 170,
+        fontSize: 'medium',
+        accentColor: '#22c55e',
+      }
+    })
+    localStorage.clear()
+  },
+
+  clearAllData: () => {
+    set({
+      zh_sessions: [], zh_topicMap: {}, zh_mocks: [],
+      zh_weeklyChecks: [], zh_pomodoro_today: 0, zh_last_pomo_date: null,
+      quizResults: [], plannerTasks: [],
+    })
+    ss('zh_sessions', []); ss('zh_topicMap', {}); ss('zh_mocks', [])
+    ss('zh_weeklyChecks', []); ss('zh_pomodoro_today', 0)
+    ss('quizResults', []); ss('plannerTasks', [])
+    get()._scheduleSync()
+  },
+}))

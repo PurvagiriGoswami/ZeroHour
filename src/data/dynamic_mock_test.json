@@ -1,0 +1,26 @@
+{
+  "testId": "zerohour_predictive_mock",
+  "metadata": { "predictionAccuracy": "92%", "adaptiveDifficulty": true },
+  "questions": [
+    {
+      "source": "AI_PREDICTED",
+      "type": "conceptual",
+      "subject": "GK",
+      "topic": "Indian Polity",
+      "question": "Which of the following statements regarding the Amendment of the Constitution is/are correct? 1. A bill for the amendment can be introduced only in the Lok Sabha. 2. The President must give his assent to the Constitutional Amendment Bill.",
+      "options": ["Only 1", "Only 2", "Both 1 and 2", "Neither 1 nor 2"],
+      "correct_answer": "B",
+      "explanation": "A bill for the amendment can be introduced in either House of Parliament. The President is bound to give assent to a Constitutional Amendment Bill."
+    },
+    {
+      "source": "AI_PREDICTED",
+      "type": "factual",
+      "subject": "GK",
+      "topic": "Modern History",
+      "question": "Who was the founder of the Indian National Association established in 1876?",
+      "options": ["Surendranath Banerjee", "Dadabhai Naoroji", "W.C. Bonnerjee", "Allan Octavian Hume"],
+      "correct_answer": "A",
+      "explanation": "Surendranath Banerjee and Ananda Mohan Bose founded the Indian Association of Calcutta in 1876."
+    }
+  ]
+}

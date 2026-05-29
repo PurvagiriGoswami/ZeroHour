@@ -1,0 +1,53 @@
+{
+  "summary": {
+    "totalQuestions": 150,
+    "lastAnalyzed": "2026-03-27T10:46:45.968Z"
+  },
+  "subjectDistribution": {
+    "GK": 85,
+    "English": 40,
+    "Mathematics": 25
+  },
+  "topTopics": [
+    { "topic": "Modern History", "subject": "GK", "count": 28, "importance": 8.45 },
+    { "topic": "Error Spotting", "subject": "English", "count": 25, "importance": 7.12 },
+    { "topic": "Arithmetic", "subject": "Mathematics", "count": 22, "importance": 6.88 },
+    { "topic": "Indian Polity", "subject": "GK", "count": 20, "importance": 6.54 },
+    { "topic": "Geography (Physical)", "subject": "GK", "count": 18, "importance": 5.92 },
+    { "topic": "Vocabulary (Synonyms)", "subject": "English", "count": 15, "importance": 5.45 },
+    { "topic": "Geometry", "subject": "Mathematics", "count": 12, "importance": 4.88 },
+    { "topic": "Current Affairs", "subject": "GK", "count": 10, "importance": 4.54 }
+  ],
+  "typeStats": {
+    "factual": 65,
+    "conceptual": 42,
+    "statement-based": 28,
+    "calculation-based": 15
+  },
+  "difficultyStats": {
+    "easy": 45,
+    "medium": 75,
+    "hard": 30
+  },
+  "gaps": [
+    { "topic": "Ancient History", "importance": 4.2 },
+    { "topic": "Trigonometry", "importance": 3.8 }
+  ],
+  "predictions": [
+    {
+      "topic": "Constitutional Amendments",
+      "probability": "High",
+      "reason": "Recent trend shows increasing focus on Article 368 and 100+ amendments."
+    },
+    {
+      "topic": "Oceanic Currents",
+      "probability": "Medium",
+      "reason": "Historically cyclic topic, last major appearance in 2021."
+    },
+    {
+      "topic": "Para-Jumbles",
+      "probability": "High",
+      "reason": "High frequency in recent English papers with increasing complexity."
+    }
+  ]
+}
