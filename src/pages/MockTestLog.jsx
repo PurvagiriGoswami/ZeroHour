@@ -1,205 +1,265 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
-
-const TEST_TYPES = [
-  'CDS Full Mock', 'CDS Section Math', 'CDS Section English', 
-  'CDS Section GK', 'AFCAT Full Mock', 'Chapter Test'
-];
-
-const BENCHMARKS = [
-  { week: 6, label: 'CDS Mock 1', target: '50% overall, 45%+ Math' },
-  { week: 8, label: 'AFCAT Mock', target: '60% overall' },
-  { week: 10, label: 'CDS Mock 2', target: '60% overall, 55%+ Math' },
-  { week: 13, label: 'Final', target: '65%+ Math, 70%+ English' },
-];
+import { CDS_PAPER, AFCAT_PAPER } from '../data';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
 
 export default function MockTestLog() {
-  const { zh_mocks, setZhMocks } = useAppStore(
+  const { zh_mocks, setZhMocks, settings, setTopicMap, zh_topicMap } = useAppStore(
     useShallow(s => ({
       zh_mocks: s.zh_mocks,
-      setZhMocks: s.setZhMocks
+      setZhMocks: s.setZhMocks,
+      settings: s.settings,
+      setTopicMap: s.setTopicMap,
+      zh_topicMap: s.zh_topicMap
     }))
   );
 
   const [showForm, setShowForm] = useState(false);
+  const [examType, setExamType] = useState('CDS');
+  const [historyFilter, setHistoryFilter] = useState('ALL');
+  
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    type: TEST_TYPES[0],
-    math: '',
-    english: '',
-    gk: '',
-    science: '',
-    total: '',
-    notes: ''
+    scores: {} // will hold { subjectId: { attempted, correct } }
   });
+
+  const paper = examType === 'CDS' ? CDS_PAPER : AFCAT_PAPER;
+
+  const calculated = useMemo(() => {
+    const res = { subjects: {}, totalMarks: 0, totalMax: paper.totalMarks, accuracy: 0 };
+    let totalCorrect = 0;
+    let totalAttempted = 0;
+
+    paper.subjects.forEach(sub => {
+      const s = form.scores[sub.id] || { attempted: 0, correct: 0 };
+      const wrong = s.attempted - s.correct;
+      const marks = (s.correct * sub.correct) - (wrong * sub.penalty);
+      const acc = s.attempted > 0 ? (s.correct / s.attempted) * 100 : 0;
+      
+      res.subjects[sub.id] = { ...s, wrong, marks, acc };
+      res.totalMarks += marks;
+      totalCorrect += s.correct;
+      totalAttempted += s.attempted;
+    });
+
+    res.accuracy = totalAttempted > 0 ? (totalCorrect / totalAttempted) * 100 : 0;
+    return res;
+  }, [form.scores, paper]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const newMock = {
-      ...form,
       id: Date.now().toString(),
-      math: parseFloat(form.math) || 0,
-      english: parseFloat(form.english) || 0,
-      gk: parseFloat(form.gk) || 0,
-      science: parseFloat(form.science) || 0,
-      total: parseFloat(form.total) || 0,
+      date: form.date,
+      type: examType,
+      scores: form.scores,
+      calculated: calculated,
+      total: (calculated.totalMarks / paper.totalMarks) * 100
     };
     setZhMocks([newMock, ...zh_mocks]);
     setShowForm(false);
-    setForm({
-      date: new Date().toISOString().split('T')[0],
-      type: TEST_TYPES[0],
-      math: '',
-      english: '',
-      gk: '',
-      science: '',
-      total: '',
-      notes: ''
-    });
+    setForm({ date: new Date().toISOString().split('T')[0], scores: {} });
   };
 
-  const getScoreColor = (score) => {
-    if (score >= 60) return '#22c55e';
-    if (score >= 45) return '#f59e0b';
-    return '#ef4444';
-  };
+  const trendData = useMemo(() => {
+    return zh_mocks
+      .filter(m => m.type === examType)
+      .reverse()
+      .map((m, i) => ({
+        name: `Mock ${i + 1}`,
+        score: m.total,
+        ...Object.entries(m.calculated.subjects).reduce((acc, [id, data]) => {
+          acc[id] = data.acc;
+          return acc;
+        }, {})
+      }));
+  }, [zh_mocks, examType]);
+
+  const weakAreas = useMemo(() => {
+    if (zh_mocks.length === 0) return [];
+    const lastMock = zh_mocks[0];
+    return Object.entries(lastMock.calculated.subjects)
+      .sort((a, b) => a[1].acc - b[1].acc)
+      .slice(0, 2)
+      .map(([id, data]) => ({ id, ...data }));
+  }, [zh_mocks]);
+
+  const filteredHistory = zh_mocks.filter(m => historyFilter === 'ALL' || m.type === historyFilter);
 
   return (
     <div className="page-inner fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
         <div>
           <h1 className="card-title" style={{ marginBottom: 5 }}>MOCK TEST LOG</h1>
-          <p style={{ color: 'var(--text4)', fontSize: 12 }}>Strategic performance tracking & benchmarks.</p>
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button 
+              className={`btn ${examType === 'CDS' ? 'active' : ''}`} 
+              onClick={() => { setExamType('CDS'); setForm({ ...form, scores: {} }); }}
+              style={{ fontSize: 10, padding: '4px 12px' }}
+            >CDS</button>
+            <button 
+              className={`btn ${examType === 'AFCAT' ? 'active' : ''}`} 
+              onClick={() => { setExamType('AFCAT'); setForm({ ...form, scores: {} }); }}
+              style={{ fontSize: 10, padding: '4px 12px' }}
+            >AFCAT</button>
+          </div>
         </div>
         <button className="btn" onClick={() => setShowForm(!showForm)} style={{ borderColor: 'var(--indigo)' }}>
           {showForm ? 'CANCEL' : 'LOG NEW TEST'}
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
-        <div className="main-col">
-          {showForm && (
-            <form className="card pop-in" onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 15 }}>
-                <div>
-                  <label className="label-caps">Date</label>
-                  <input type="date" className="inp" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required />
-                </div>
-                <div>
-                  <label className="label-caps">Test Type</label>
-                  <select className="inp" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
-                    {TEST_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
+      {showForm && (
+        <form className="card pop-in" onSubmit={handleSubmit} style={{ marginBottom: 30 }}>
+          <div style={{ marginBottom: 20 }}>
+            <label className="label-caps">Date</label>
+            <input type="date" className="inp" value={form.date} onChange={e => setForm({...form, date: e.target.value})} required />
+          </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 15 }}>
-                <div>
-                  <label className="label-caps">Math %</label>
-                  <input type="number" className="inp" value={form.math} onChange={e => setForm({...form, math: e.target.value})} placeholder="0" />
-                </div>
-                <div>
-                  <label className="label-caps">Eng %</label>
-                  <input type="number" className="inp" value={form.english} onChange={e => setForm({...form, english: e.target.value})} placeholder="0" />
-                </div>
-                <div>
-                  <label className="label-caps">GK %</label>
-                  <input type="number" className="inp" value={form.gk} onChange={e => setForm({...form, gk: e.target.value})} placeholder="0" />
-                </div>
-                <div>
-                  <label className="label-caps">Sci %</label>
-                  <input type="number" className="inp" value={form.science} onChange={e => setForm({...form, science: e.target.value})} placeholder="0" />
-                </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 15, marginBottom: 25 }}>
+            {paper.subjects.map(sub => (
+              <div key={sub.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 15, alignItems: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>{sub.label} <span style={{ fontSize: 9, color: 'var(--text4)' }}>({sub.questions}Q)</span></div>
+                <input 
+                  type="number" className="inp" placeholder="Attempted" 
+                  value={form.scores[sub.id]?.attempted || ''} 
+                  onChange={e => setForm({
+                    ...form, 
+                    scores: { ...form.scores, [sub.id]: { ...form.scores[sub.id], attempted: parseInt(e.target.value) || 0 } }
+                  })}
+                />
+                <input 
+                  type="number" className="inp" placeholder="Correct" 
+                  value={form.scores[sub.id]?.correct || ''} 
+                  onChange={e => setForm({
+                    ...form, 
+                    scores: { ...form.scores, [sub.id]: { ...form.scores[sub.id], correct: parseInt(e.target.value) || 0 } }
+                  })}
+                />
               </div>
+            ))}
+          </div>
 
-              <div style={{ marginBottom: 15 }}>
-                <label className="label-caps">Overall %</label>
-                <input type="number" className="inp" value={form.total} onChange={e => setForm({...form, total: e.target.value})} placeholder="0" required />
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label className="label-caps">Error Notes</label>
-                <textarea className="ta" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Patterns, silly mistakes, weak topics..." />
-              </div>
-
-              <button type="submit" className="btn" style={{ width: '100%', borderColor: 'var(--green)', background: 'rgba(34, 197, 94, 0.1)' }}>
-                SUBMIT INTEL
-              </button>
-            </form>
-          )}
-
-          <div className="history">
-            <div className="label-caps" style={{ marginBottom: 15 }}>Test History</div>
-            {zh_mocks.length === 0 ? (
-              <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text4)' }}>
-                No mock tests logged yet.
-              </div>
-            ) : (
-              zh_mocks.map(mock => (
-                <div key={mock.id} className="card" style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 14 }}>{mock.type}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text4)' }}>{mock.date}</div>
-                    </div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: getScoreColor(mock.total) }}>
-                      {mock.total}%
-                    </div>
+          <div className="card" style={{ background: 'var(--bg2)', border: 'none', marginBottom: 20 }}>
+            <div className="label-caps" style={{ marginBottom: 15 }}>Auto-Calculated Intel</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 15 }}>
+              {paper.subjects.map(sub => {
+                const calc = calculated.subjects[sub.id];
+                return (
+                  <div key={sub.id} style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: 9, color: 'var(--text4)' }}>{sub.label}</div>
+                    <div style={{ fontWeight: 800, color: 'var(--green)' }}>{calc.marks.toFixed(1)}M</div>
+                    <div style={{ fontSize: 8, color: 'var(--text4)' }}>{calc.acc.toFixed(0)}% Acc</div>
                   </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: 20, paddingTop: 15, borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+              <div className="label-caps">Total Score</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--indigo)' }}>{calculated.totalMarks.toFixed(1)} / {paper.totalMarks}</div>
+            </div>
+          </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 15 }}>
-                    {[
-                      { l: 'MTH', v: mock.math },
-                      { l: 'ENG', v: mock.english },
-                      { l: 'GK', v: mock.gk },
-                      { l: 'SCI', v: mock.science }
-                    ].map(s => (
-                      <div key={s.l} style={{ textAlign: 'center', padding: '8px', background: 'var(--bg3)', borderRadius: 6 }}>
-                        <div className="label-caps" style={{ fontSize: 8 }}>{s.l}</div>
-                        <div style={{ fontWeight: 700, color: getScoreColor(s.v) }}>{s.v}%</div>
-                      </div>
-                    ))}
-                  </div>
+          <button type="submit" className="btn" style={{ width: '100%', borderColor: 'var(--green)', background: 'rgba(34, 197, 94, 0.1)' }}>
+            SUBMIT INTEL
+          </button>
+        </form>
+      )}
 
-                  <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${mock.total}%`, background: getScoreColor(mock.total) }} />
-                  </div>
-
-                  {mock.notes && (
-                    <div style={{ marginTop: 15, fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>
-                      " {mock.notes} "
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
+      {!showForm && zh_mocks.length > 0 && (
+        <div className="card" style={{ marginBottom: 30, padding: '20px' }}>
+          <div className="label-caps" style={{ marginBottom: 20 }}>Score Trend — {examType}</div>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--bg4)" />
+                <XAxis dataKey="name" stroke="var(--text4)" fontSize={10} />
+                <YAxis stroke="var(--text4)" fontSize={10} />
+                <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+                <Line type="monotone" dataKey="score" name="Overall %" stroke="var(--indigo)" strokeWidth={3} dot={{ r: 4 }} />
+                {paper.subjects.map((sub, i) => (
+                  <Line key={sub.id} type="monotone" dataKey={sub.id} name={`${sub.label} %`} stroke={['#39ff14', '#ffd700', '#00d4ff', '#bf80ff', '#ff4444'][i % 5]} strokeWidth={1} dot={{ r: 2 }} />
+                ))}
+                <ReferenceLine y={settings.cdsCutoff || 160} stroke="var(--red)" strokeDasharray="3 3" label={{ position: 'right', value: 'Cutoff', fill: 'var(--red)', fontSize: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
+      )}
 
-        <div className="sidebar-col">
-          <div className="card" style={{ borderColor: 'var(--amber)' }}>
-            <div className="label-caps" style={{ color: 'var(--amber)', marginBottom: 15 }}>Benchmark Targets</div>
-            {BENCHMARKS.map((b, idx) => (
-              <div key={idx} style={{ marginBottom: 15, paddingBottom: 15, borderBottom: idx < BENCHMARKS.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 700, fontSize: 12 }}>{b.label}</span>
-                  <span className="label-caps" style={{ fontSize: 8 }}>Week {b.week}</span>
+      {weakAreas.length > 0 && (
+        <div className="card" style={{ borderColor: 'var(--red)', background: 'rgba(239, 68, 68, 0.02)', marginBottom: 30 }}>
+          <div className="label-caps" style={{ color: 'var(--red)', marginBottom: 15 }}>Weak Areas from Last Mock</div>
+          <div style={{ display: 'flex', gap: 15, flexWrap: 'wrap' }}>
+            {weakAreas.map(w => (
+              <div key={w.id} style={{ flex: 1, minWidth: 200, padding: 15, background: 'var(--bg3)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ fontWeight: 800 }}>{w.id.toUpperCase()}</div>
+                  <div style={{ color: 'var(--red)', fontWeight: 800 }}>{w.acc.toFixed(0)}% Acc</div>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text4)' }}>{b.target}</div>
+                <button 
+                  className="btn" 
+                  style={{ width: '100%', fontSize: 9, borderColor: 'var(--indigo)' }}
+                  onClick={() => onNav('queue')}
+                >
+                  ADD TO REVISION QUEUE +
+                </button>
               </div>
             ))}
           </div>
         </div>
+      )}
+
+      <div className="history">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+          <div className="label-caps">Mock Intel History</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {['ALL', 'CDS', 'AFCAT'].map(f => (
+              <button 
+                key={f} 
+                onClick={() => setHistoryFilter(f)}
+                className={`btn ${historyFilter === f ? 'active' : ''}`}
+                style={{ fontSize: 8, padding: '2px 8px' }}
+              >{f}</button>
+            ))}
+          </div>
+        </div>
+
+        {filteredHistory.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: 40, color: 'var(--text4)' }}>
+            No intel logged for this sector.
+          </div>
+        ) : (
+          filteredHistory.map(mock => (
+            <div key={mock.id} className="card" style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 15 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>{mock.type} FULL MOCK</div>
+                  <div style={{ fontSize: 10, color: 'var(--text4)' }}>{mock.date}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: mock.total >= 60 ? 'var(--green)' : 'var(--red)' }}>
+                    {mock.calculated.totalMarks.toFixed(1)}M
+                  </div>
+                  <div style={{ fontSize: 9, color: 'var(--text4)' }}>{mock.total.toFixed(1)}% Score</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 10 }}>
+                {Object.entries(mock.calculated.subjects).map(([id, data]) => (
+                  <div key={id} style={{ padding: '8px', background: 'var(--bg3)', borderRadius: 6, textAlign: 'center' }}>
+                    <div className="label-caps" style={{ fontSize: 8 }}>{id.toUpperCase()}</div>
+                    <div style={{ fontWeight: 700, color: data.acc >= 60 ? 'var(--green)' : 'var(--red)', fontSize: 11 }}>{data.marks.toFixed(1)}</div>
+                    <div style={{ fontSize: 8, color: 'var(--text4)' }}>{data.acc.toFixed(0)}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
       </div>
-      
-      <style>{`
-        @media (max-width: 768px) {
-          div[style*="gridTemplateColumns: 1fr 300px"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

@@ -24,7 +24,11 @@ export default function Onboarding({ onComplete }) {
       // Update Auth Profile
       await updateProfile(user, { displayName: name })
       
-      // Update Store Settings
+      // Update Store Settings & Profile
+      store.setProfile({
+        name,
+        targetExam: targetExam.includes('CDS') ? 'CDS' : 'AFCAT'
+      })
       store.setSettings({
         name,
         targetExam,

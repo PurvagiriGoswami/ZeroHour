@@ -1,191 +1,153 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useAppStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line } from 'recharts'
 import SafeChart from '../components/SafeChart'
-import { MASTER_TOPICS } from '../data'
-
-const SUBJECT_COLORS = {
-  "Mathematics": '#22c55e',
-  "English": '#3b82f6',
-  "GK / GA": '#a78bfa',
-  "Science": '#06b6d4',
-  "AFCAT": '#f97316',
-  "SSB": '#f59e0b'
-}
+import { MASTER_TOPICS, RADAR_SUBJECTS } from '../data'
 
 export default function Analytics() {
-  const { zh_mocks, zh_topicMap, zh_sessions } = useAppStore(
+  const { zh_mocks, zh_topicMap, zh_sessions, settings, zh_radar, zh_errors, zh_xp } = useAppStore(
     useShallow(s => ({
       zh_mocks: s.zh_mocks,
       zh_topicMap: s.zh_topicMap,
-      zh_sessions: s.zh_sessions
+      zh_sessions: s.zh_sessions,
+      settings: s.settings,
+      zh_radar: s.zh_radar,
+      zh_errors: s.zh_errors,
+      zh_xp: s.zh_xp
     }))
   )
 
-  // Mock test scores
-  const mockScores = useMemo(() => {
-    try {
-      if (!zh_mocks || !zh_mocks.length) return []
-      return [...zh_mocks].reverse().slice(0, 10).reverse().map((m, i) => ({
-        name: `M${i + 1}`,
-        score: m.total || 0,
-        target: 60,
-      }))
-    } catch(e) { return [] }
-  }, [zh_mocks])
+  const { setRadar } = useAppStore();
 
-  // Subject progress
-  const subjectProgress = useMemo(() => {
-    return Object.keys(MASTER_TOPICS).map(sub => {
-      const allSubTopics = [];
-      Object.values(MASTER_TOPICS[sub]).forEach(list => allSubTopics.push(...list));
-      const done = allSubTopics.filter(t => !!zh_topicMap[`${sub}::${t}`]).length;
-      const total = allSubTopics.length;
-      return { 
-        name: sub, 
-        done, 
-        total, 
-        pct: total > 0 ? Math.round(done / total * 100) : 0, 
-        fill: SUBJECT_COLORS[sub] || '#4a4a4a'
-      }
-    })
-  }, [zh_topicMap])
+  // 6. Radar Data
+  const radarData = useMemo(() => {
+    return RADAR_SUBJECTS.map(sub => ({
+      subject: sub,
+      A: zh_radar[sub] || 5,
+      fullMark: 10
+    }));
+  }, [zh_radar]);
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 16px', fontSize: 13, boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-        <div style={{ color: 'var(--text)', marginBottom: 8, fontWeight: 800 }}>{label}</div>
-        {payload.map((p, i) => (
-          <div key={i} style={{ color: p.color || p.fill, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || p.fill }} />
-            <span style={{ fontWeight: 600 }}>{p.name}: {p.value}%</span>
-          </div>
-        ))}
-      </div>
-    )
-  }
+  // 5. Mock Trend Data
+  const trendData = useMemo(() => {
+    return zh_mocks.map(m => ({
+      date: m.date,
+      score: (m.calculated?.totalMarks / 300) * 100,
+      type: m.type
+    })).sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [zh_mocks]);
 
-  // Heatmap data
-  const heatmap = useMemo(() => {
-    const weeks = 12;
-    const days = 7;
-    const data = [];
-    const today = new Date();
-    
-    for (let w = weeks - 1; w >= 0; w--) {
-      const week = [];
-      for (let d = 0; d < days; d++) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - (w * 7 + (6 - d)));
-        const dStr = date.toISOString().split('T')[0];
-        const sessionCount = (zh_sessions || []).filter(s => s.date === dStr).length;
-        week.push({ date: dStr, count: sessionCount });
-      }
-      data.push(week);
-    }
-    return data;
-  }, [zh_sessions]);
+  // 7. Weak Area Heatmap
+  const heatmapGrid = useMemo(() => {
+    return RADAR_SUBJECTS.map(sub => {
+      const errors = zh_errors.filter(e => e.subject.includes(sub)).length;
+      const rating = zh_radar[sub] || 5;
+      // Intensity: higher errors + lower rating = redder
+      const intensity = Math.min(100, (errors * 10) + (10 - rating) * 10);
+      return { sub, errors, rating, intensity };
+    });
+  }, [zh_errors, zh_radar]);
+
+  const getHeatmapColor = (intensity) => {
+    if (intensity > 70) return '#ef4444'; // Red
+    if (intensity > 40) return '#f59e0b'; // Amber
+    return '#22c55e'; // Green
+  };
 
   return (
-    <div className="page-inner fade-in">
-      {/* Performance Header */}
-      <div className="card" style={{borderRadius:24, padding:'24px 20px', background: 'var(--bg2)', border:'1px solid var(--border)', marginBottom:24}}>
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24, gap:16, flexWrap:'wrap'}}>
-          <div>
-            <div className="label-caps" style={{ color:'var(--green)', marginBottom:6 }}>Strategic Analysis</div>
-            <div style={{fontSize:'clamp(22px, 6vw, 28px)', fontWeight:800, color:'var(--text)'}}>Operational Readiness Report</div>
-          </div>
-        </div>
-        
-        <div className="g2 keep" style={{gap:10}}>
-          {[
-            ['Mock Tests Logged', zh_mocks.length, 'var(--green)'],
-            ['Objectives Started', Object.keys(zh_topicMap).length, 'var(--indigo)'],
-          ].map(([l,v,c]) => (
-            <div key={l} style={{background:'rgba(255,255,255,0.03)', padding:12, borderRadius:14, border:'1px solid rgba(255,255,255,0.05)', textAlign:'center', minWidth:0}}>
-              <div style={{fontSize:18, fontWeight:800, color:c}}>{v}</div>
-              <div className="label-caps" style={{ marginTop:2 }}>{l}</div>
-            </div>
-          ))}
-        </div>
+    <div className="page-inner fade-in" style={{ paddingBottom: 100 }}>
+      <div style={{ marginBottom: 30 }}>
+        <h1 className="card-title">STRATEGIC ANALYTICS</h1>
+        <p style={{ color: 'var(--text4)', fontSize: 11 }}>In-depth performance evaluation and deployment matrix.</p>
       </div>
 
       <div className="g2">
-        {/* Mock Test Scores */}
-        <div className="card" style={{borderRadius:20, padding:24}}>
-          <div className="label-caps" style={{ marginBottom:24 }}>Mock Performance Trend</div>
-          <SafeChart data={mockScores} height={260} emptyMessage="No mock data available. Log your first test." emptyCta="Log Mock Test">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockScores} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" tick={{fill:'var(--text4)', fontSize:10, fontWeight:600}} axisLine={false} tickLine={false} />
-                <YAxis tick={{fill:'var(--text4)', fontSize:10, fontWeight:600}} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="score" fill="var(--green)" fillOpacity={0.8} name="Score" radius={[4, 4, 0, 0]} barSize={24} />
-                <Bar dataKey="target" fill="var(--amber)" fillOpacity={0.2} name="Target" radius={[4, 4, 0, 0]} barSize={24} />
-              </BarChart>
+        {/* 6. WEEKLY SELF-RATING RADAR */}
+        <div className="card">
+          <div className="label-caps" style={{ marginBottom: 24 }}>Subject Proficiency Radar</div>
+          <div style={{ height: 300 }}>
+            <ResponsiveContainer>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="var(--border)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text4)', fontSize: 10 }} />
+                <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                <Radar name="Proficiency" dataKey="A" stroke="var(--green)" fill="var(--green)" fillOpacity={0.4} />
+              </RadarChart>
             </ResponsiveContainer>
-          </SafeChart>
-        </div>
-
-        {/* Syllabus Progress */}
-        <div className="card" style={{borderRadius:20, padding:24}}>
-          <div className="label-caps" style={{ marginBottom:24 }}>Theatre Deployment Progress</div>
-          <div style={{display:'flex', flexDirection:'column', gap:20}}>
-            {subjectProgress.map(s => (
-              <div key={s.name}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8}}>
-                  <div style={{display:'flex', alignItems:'center', gap:10}}>
-                    <div style={{width:12, height:12, borderRadius:4, background:s.fill}} />
-                    <span style={{fontSize:14, fontWeight:700, color:'var(--text2)'}}>{s.name}</span>
-                  </div>
-                  <span style={{fontSize:12, fontWeight:800, color:'var(--text4)'}}>
-                    {s.done}/{s.total} Objectives · {s.pct}%
-                  </span>
-                </div>
-                <div className="pb" style={{height:6, background:'var(--bg4)'}}>
-                  <div className="pf" style={{width:`${s.pct}%`, background: s.fill, borderRadius:3}}/>
-                </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 20 }}>
+            {RADAR_SUBJECTS.map(sub => (
+              <div key={sub}>
+                <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 4 }}>{sub}</div>
+                <input 
+                  type="range" min="1" max="10" 
+                  value={zh_radar[sub] || 5} 
+                  onChange={e => setRadar({ ...zh_radar, [sub]: parseInt(e.target.value) })}
+                  style={{ width: '100%' }}
+                />
               </div>
             ))}
           </div>
         </div>
+
+        {/* 5. MOCK TREND GRAPH */}
+        <div className="card">
+          <div className="label-caps" style={{ marginBottom: 24 }}>Mock Performance Trend</div>
+          <div style={{ height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" tick={{ fontSize: 9 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
+                <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+                <Legend />
+                <Line type="monotone" dataKey="score" stroke="var(--indigo)" strokeWidth={2} dot={{ r: 4 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      <div className="card" style={{ marginTop: 24, padding: 24 }}>
-        <div className="label-caps" style={{ marginBottom: 20 }}>Consistency Matrix (12 Weeks)</div>
-        <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 10 }}>
-          {heatmap.map((week, wi) => (
-            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {week.map((day, di) => {
-                let color = 'var(--bg4)';
-                if (day.count > 0) color = 'rgba(34, 197, 94, 0.2)';
-                if (day.count > 2) color = 'rgba(34, 197, 94, 0.5)';
-                if (day.count > 4) color = 'rgba(34, 197, 94, 1)';
-                
-                return (
-                  <div 
-                    key={di} 
-                    title={`${day.date}: ${day.count} sessions`}
-                    style={{ 
-                      width: 12, height: 12, background: color, borderRadius: 2,
-                      border: '1px solid rgba(255,255,255,0.05)'
-                    }} 
-                  />
-                );
-              })}
-            </div>
-          ))}
+      <div className="g2" style={{ marginTop: 24 }}>
+        {/* 7. WEAK AREA HEATMAP */}
+        <div className="card">
+          <div className="label-caps" style={{ marginBottom: 20 }}>Weak Area Heatmap</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {heatmapGrid.map(item => (
+              <div key={item.sub} style={{ 
+                padding: 15, borderRadius: 8, background: getHeatmapColor(item.intensity), 
+                color: 'black', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 900 }}>{item.sub.toUpperCase()}</div>
+                <div style={{ fontSize: 8, opacity: 0.8 }}>Errors: {item.errors} | Rating: {item.rating}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginTop: 12 }}>
-          <span style={{ fontSize: 9, color: 'var(--text4)' }}>LESS</span>
-          <div style={{ width: 10, height: 10, background: 'var(--bg4)', borderRadius: 2 }} />
-          <div style={{ width: 10, height: 10, background: 'rgba(34, 197, 94, 0.2)', borderRadius: 2 }} />
-          <div style={{ width: 10, height: 10, background: 'rgba(34, 197, 94, 0.5)', borderRadius: 2 }} />
-          <div style={{ width: 10, height: 10, background: 'rgba(34, 197, 94, 1)', borderRadius: 2 }} />
-          <span style={{ fontSize: 9, color: 'var(--text4)' }}>MORE</span>
+
+        {/* 4. ERROR PATTERN ALERTS */}
+        <div className="card">
+          <div className="label-caps" style={{ marginBottom: 20 }}>Error Pattern Alerts</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {heatmapGrid.filter(i => i.errors >= 3).map(i => (
+              <div key={i.sub} style={{ 
+                padding: '12px 15px', borderRadius: 8, border: '1px solid var(--red)', 
+                background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800 }}>{i.sub} Focused Revision</div>
+                  <div style={{ fontSize: 9, color: 'var(--text4)' }}>{i.errors} errors detected in this subject</div>
+                </div>
+                <div style={{ background: 'var(--red)', color: 'white', padding: '4px 8px', borderRadius: 4, fontSize: 8, fontWeight: 900 }}>CRITICAL</div>
+              </div>
+            ))}
+            {heatmapGrid.filter(i => i.errors >= 3).length === 0 && (
+              <div style={{ padding: 40, textAlign: 'center', color: 'var(--text4)', fontSize: 12 }}>
+                No significant error patterns detected yet.
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

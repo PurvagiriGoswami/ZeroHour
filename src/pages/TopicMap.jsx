@@ -1,65 +1,88 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/useStore';
 import { MASTER_TOPICS } from '../data';
 
+const ProgressRing = ({ state }) => {
+  const colors = {
+    'Untouched': 'var(--bg4)',
+    'Studied': '#00d4ff',
+    'Revised': '#ffd700',
+    'Confident': '#39ff14',
+    'Mastered': '#39ff14'
+  };
+  const fill = {
+    'Untouched': 0,
+    'Studied': 25,
+    'Revised': 50,
+    'Confident': 100,
+    'Mastered': 100
+  };
+  const color = colors[state] || colors['Untouched'];
+  const percentage = fill[state] || 0;
+  const dash = (percentage / 100) * 88;
+
+  return (
+    <svg width="24" height="24" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="14" fill="transparent" stroke="var(--bg4)" strokeWidth="3" />
+      <circle 
+        cx="16" cy="16" r="14" fill="transparent" 
+        stroke={color} strokeWidth="3" 
+        strokeDasharray={`${dash} 88`} 
+        transform="rotate(-90 16 16)"
+        style={{ transition: 'stroke-dasharray 0.3s ease' }}
+      />
+    </svg>
+  );
+};
+
 export default function TopicMap() {
   const { zh_topicMap, setTopicMap } = useAppStore();
-  const [activeSub, setActiveSub] = useState(Object.keys(MASTER_TOPICS)[0]);
-  const [editingTopic, setEditingTopic] = useState(null); // { key, name, notes }
+  const [examFilter, setExamFilter] = useState('ALL');
+  const [editingTopic, setEditingTopic] = useState(null);
+  const pressTimer = useRef(null);
 
-  const handleMarkStarted = (subject, topic) => {
-    const topicKey = `${subject}::${topic}`;
+  const subjects = useMemo(() => {
+    return Object.entries(MASTER_TOPICS)
+      .filter(([name, data]) => examFilter === 'ALL' || data.exam_tags.includes(examFilter))
+      .map(([name, data]) => ({ name, ...data }));
+  }, [examFilter]);
+
+  const handleStateCycle = (topicKey) => {
+    const data = zh_topicMap[topicKey] || { state: 'Untouched', firstStudied: null, revisits: [] };
+    const states = ['Untouched', 'Studied', 'Revised', 'Confident'];
+    const currentIndex = states.indexOf(data.state || 'Untouched');
+    const nextState = states[(currentIndex + 1) % states.length];
+    
     const newTopicData = {
-      firstStudied: new Date().toISOString().split('T')[0],
-      revisits: []
+      ...data,
+      state: nextState,
+      firstStudied: nextState !== 'Untouched' && !data.firstStudied ? new Date().toISOString().split('T')[0] : data.firstStudied
     };
     setTopicMap({ ...zh_topicMap, [topicKey]: newTopicData });
   };
 
-  const getNextDueDate = (firstStudied, revisits) => {
-    const completedRounds = revisits.length;
-    const intervals = [7, 14, 30];
-    if (completedRounds >= intervals.length) return 'MASTERED';
-
-    const firstDate = new Date(firstStudied);
-    const dueDate = new Date(firstDate.getTime() + intervals[completedRounds] * 24 * 60 * 60 * 1000);
-    return dueDate.toISOString().split('T')[0];
+  const handleTouchStart = (topicKey, topicName, data) => {
+    pressTimer.current = setTimeout(() => {
+      setEditingTopic({ key: topicKey, name: topicName, notes: data?.intel || '' });
+    }, 500);
   };
 
-  const handleSaveIntel = () => {
-    if (!editingTopic) return;
-    const existing = zh_topicMap[editingTopic.key] || { 
-      firstStudied: new Date().toISOString().split('T')[0], 
-      revisits: [] 
-    };
-    const newTopicData = {
-      ...existing,
-      intel: editingTopic.notes
-    };
-    setTopicMap({ ...zh_topicMap, [editingTopic.key]: newTopicData });
-    setEditingTopic(null);
+  const handleTouchEnd = () => {
+    clearTimeout(pressTimer.current);
   };
 
-  const currentList = useMemo(() => {
-    const sub = MASTER_TOPICS[activeSub];
-    const flattened = [];
-    Object.entries(sub).forEach(([category, topics]) => {
-      topics.forEach(t => {
-        flattened.push({ 
-          name: t, 
-          p: category, 
-          isStarred: t.includes('⭐') 
-        });
+  const getSubjectProgress = (subName) => {
+    const sub = MASTER_TOPICS[subName];
+    let total = 0;
+    let confident = 0;
+    Object.values(sub.categories || {}).forEach(cat => {
+      cat.topics.forEach(t => {
+        total++;
+        if (zh_topicMap[`${subName}::${t.name}`]?.state === 'Confident') confident++;
       });
     });
-    return flattened;
-  }, [activeSub]);
-
-  const stats = useMemo(() => {
-    const total = currentList.length;
-    const started = currentList.filter(t => !!zh_topicMap[`${activeSub}::${t.name}`]).length;
-    return { total, started, pct: total > 0 ? Math.round(started / total * 100) : 0 };
-  }, [currentList, zh_topicMap, activeSub]);
+    return { total, confident, pct: (confident / total) * 100 };
+  };
 
   return (
     <div className="page-inner fade-in">
@@ -68,124 +91,89 @@ export default function TopicMap() {
           <h1 className="card-title" style={{ marginBottom: 5 }}>THEATRE TOPIC MAP</h1>
           <p style={{ color: 'var(--text4)', fontSize: 12 }}>Objective readiness and deployment status tracker.</p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div className="label-caps" style={{ color: 'var(--green)' }}>Readiness Level</div>
-          <div style={{ fontSize: 24, fontWeight: 900 }}>{stats.pct}%</div>
-          <div style={{ fontSize: 10, color: 'var(--text4)' }}>{stats.started} / {stats.total} Objectives</div>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {['ALL', 'CDS', 'AFCAT'].map(f => (
+            <button 
+              key={f} 
+              onClick={() => setExamFilter(f)}
+              className={`btn ${examFilter === f ? 'active' : ''}`}
+              style={{ fontSize: 9, padding: '4px 10px' }}
+            >{f}</button>
+          ))}
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 30, overflowX: 'auto', paddingBottom: 10 }}>
-        {Object.keys(MASTER_TOPICS).map(sub => (
-          <button
-            key={sub}
-            className={`btn ${activeSub === sub ? 'active' : ''}`}
-            onClick={() => setActiveSub(sub)}
-            style={{ whiteSpace: 'nowrap', fontSize: 11, padding: '8px 16px' }}
-          >
-            {sub.toUpperCase()}
-          </button>
-        ))}
-      </div>
+      {subjects.map(sub => {
+        const progress = getSubjectProgress(sub.name);
+        return (
+          <div key={sub.name} style={{ marginBottom: 40 }}>
+            <div style={{ marginBottom: 15 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h2 className="label-caps" style={{ fontSize: 14, color: 'var(--indigo)' }}>{sub.name}</h2>
+                <div style={{ fontSize: 10, fontWeight: 800 }}>{progress.confident} / {progress.total} Confident</div>
+              </div>
+              <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2 }}>
+                <div style={{ height: '100%', width: `${progress.pct}%`, background: 'var(--green)', borderRadius: 2 }} />
+              </div>
+            </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-          <thead style={{ background: 'var(--bg3)', borderBottom: '1px solid var(--border)' }}>
-            <tr>
-              <th className="label-caps" style={{ padding: '12px 20px' }}>Objective</th>
-              <th className="label-caps" style={{ padding: '12px 20px' }}>Status</th>
-              <th className="label-caps" style={{ padding: '12px 20px', textAlign: 'center' }}>Revisits</th>
-              <th className="label-caps" style={{ padding: '12px 20px' }}>Next Due</th>
-              <th className="label-caps" style={{ padding: '12px 20px', textAlign: 'right' }}>Tactical Intel</th>
-            </tr>
-          </thead>
-              <tbody>
-                {currentList.map(topic => {
-                  const topicKey = `${activeSub}::${topic.name}`;
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 15 }}>
+              {Object.entries(sub.categories || {}).map(([catName, catData]) => (
+                catData.topics.map(t => {
+                  const topicKey = `${sub.name}::${t.name}`;
                   const data = zh_topicMap[topicKey];
-                  const displayCategory = topic.p;
-                  const categoryColor = displayCategory.includes('ESSENTIAL') ? 'var(--red)' : 
-                                      displayCategory.includes('HIGH') ? 'var(--amber)' : 
-                                      'var(--green)';
-
+                  const isStarred = t.name.includes('⭐');
                   return (
-                    <tr key={topic.name} style={{ borderBottom: '1px solid var(--border)', background: data ? 'transparent' : 'rgba(255,255,255,0.01)' }}>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: topic.isStarred ? 'var(--amber)' : 'inherit' }}>
-                            {topic.name}
-                          </span>
-                          <span className="label-caps" style={{ fontSize: 8, color: categoryColor, background: `${categoryColor}11`, padding: '2px 6px', borderRadius: 4, border: `1px solid ${categoryColor}33` }}>
-                            {displayCategory}
-                          </span>
-                        </div>
-                      </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    {data ? (
-                      <div style={{ color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />
-                        <div>
-                          <div style={{ fontSize: 11, fontWeight: 800 }}>ACTIVE</div>
-                          <div style={{ fontSize: 9, color: 'var(--text4)' }}>SINCE {data.firstStudied}</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <button 
-                        className="btn" 
-                        style={{ fontSize: 9, padding: '6px 12px', borderColor: 'var(--border)', color: 'var(--text4)' }}
-                        onClick={() => handleMarkStarted(activeSub, topic.name)}
-                      >
-                        INITIATE MISSION
-                      </button>
-                    )}
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: data?.revisits.length > 0 ? 'var(--indigo)' : 'var(--text4)' }}>
-                    {data ? data.revisits.length : '--'}
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    {data ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--amber)' }}>
-                        {getNextDueDate(data.firstStudied, data.revisits)}
-                      </span>
-                    ) : '--'}
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                    <button 
-                      className="btn" 
+                    <div 
+                      key={t.name}
+                      className="card"
+                      onMouseDown={() => handleTouchStart(topicKey, t.name, data)}
+                      onMouseUp={handleTouchEnd}
+                      onMouseLeave={handleTouchEnd}
+                      onClick={() => handleStateCycle(topicKey)}
                       style={{ 
-                        fontSize: 9, padding: '6px 12px', 
-                        borderColor: data?.intel ? 'var(--green)' : 'var(--border)',
-                        background: data?.intel ? 'rgba(34, 197, 94, 0.05)' : 'transparent',
-                        color: data?.intel ? 'var(--green)' : 'var(--text4)'
+                        padding: '12px 15px', 
+                        cursor: 'pointer',
+                        borderLeft: isStarred ? '3px solid #ffd700' : '1px solid var(--border)',
+                        background: isStarred ? 'rgba(255,215,0,0.05)' : 'var(--bg2)',
+                        position: 'relative'
                       }}
-                      onClick={() => setEditingTopic({ key: topicKey, name: topic.name, notes: data?.intel || '' })}
                     >
-                      {data?.intel ? 'VIEW INTEL' : '+ ADD INTEL'}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                      {isStarred && (
+                        <div style={{ position: 'absolute', top: 5, right: 5, fontSize: 10 }}>⭐</div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.4 }}>{t.name.replace('⭐ ', '')}</div>
+                        <ProgressRing state={data?.state || 'Untouched'} />
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 8 }}>{catName}</div>
+                    </div>
+                  );
+                })
+              ))}
+            </div>
+          </div>
+        );
+      })}
 
       {editingTopic && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div className="card pop-in" style={{ maxWidth: 500, width: '100%', border: '1px solid var(--green)', boxShadow: '0 0 40px rgba(34, 197, 94, 0.1)' }}>
+          <div className="card pop-in" style={{ maxWidth: 500, width: '100%', border: '1px solid var(--green)' }}>
             <div className="label-caps" style={{ color: 'var(--green)', marginBottom: 12 }}>Tactical Intel Briefing</div>
-            <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 24, letterSpacing: -0.5 }}>{editingTopic.name}</h2>
+            <h2 style={{ fontSize: 20, fontWeight: 900, marginBottom: 24 }}>{editingTopic.name}</h2>
             <textarea 
               className="ta" 
-              style={{ minHeight: 200, marginBottom: 24, fontSize: 13, lineHeight: 1.6 }} 
-              placeholder="Record key formulas, tactical shortcuts, or critical observations for this objective..."
+              style={{ minHeight: 200, marginBottom: 24 }} 
+              placeholder="Notes..."
               value={editingTopic.notes}
               onChange={e => setEditingTopic({ ...editingTopic, notes: e.target.value })}
-              autoFocus
             />
             <div style={{ display: 'flex', gap: 12 }}>
-              <button className="btn" style={{ flex: 1 }} onClick={() => setEditingTopic(null)}>ABORT</button>
-              <button className="btn btn-g" style={{ flex: 2 }} onClick={handleSaveIntel}>SAVE INTEL DATA</button>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setEditingTopic(null)}>CLOSE</button>
+              <button className="btn" style={{ flex: 2, borderColor: 'var(--green)' }} onClick={() => {
+                setTopicMap({ ...zh_topicMap, [editingTopic.key]: { ...(zh_topicMap[editingTopic.key] || {}), intel: editingTopic.notes } });
+                setEditingTopic(null);
+              }}>SAVE INTEL</button>
             </div>
           </div>
         </div>

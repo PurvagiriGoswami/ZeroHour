@@ -6,13 +6,14 @@ import { getOverdueCount } from '../utils/tacticalEngine'
 
 export function SideMenu({ active, onNav, isOpen, isCollapsed, onClose }) {
   const user = auth.currentUser
-  const { settings, zh_topicMap } = useAppStore(
+  const { profile, settings, zh_topicMap } = useAppStore(
     useShallow(s => ({
+      profile: s.profile,
       settings: s.settings,
       zh_topicMap: s.zh_topicMap
     }))
   )
-  const name = user?.displayName || settings.name || 'User'
+  const name = profile.name || user?.displayName || settings.name || 'User'
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase()
 
   const overdueCount = getOverdueCount(zh_topicMap)

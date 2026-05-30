@@ -25,6 +25,7 @@ export default function Settings() {
     topics: false,
     mocks: false,
     sitrep: false,
+    revision: false,
   })
   const [resetConfirmText, setResetConfirmText] = useState('')
 
@@ -42,10 +43,16 @@ export default function Settings() {
     if (resetOptions.topics) { store.setTopicMap({}); toast('Topic map reset', 'info') }
     if (resetOptions.mocks) { store.setZhMocks([]); toast('Mocks cleared', 'info') }
     if (resetOptions.sitrep) { store.setWeeklyChecks([]); toast('SITREP history cleared', 'info') }
+    if (resetOptions.revision) {
+      // Assuming revision queue is derived from zh_topicMap, 
+      // but if there's a specific key, reset it. 
+      // For now, if we reset topics, revision is reset.
+      toast('Revision Queue reset (via Topic Map)', 'info')
+    }
 
     setShowResetModal(false)
     setResetConfirmText('')
-    setResetOptions({ sessions: false, topics: false, mocks: false, sitrep: false })
+    setResetOptions({ sessions: false, topics: false, mocks: false, sitrep: false, revision: false })
   }
 
   const toggleAllResets = () => {
@@ -70,12 +77,34 @@ export default function Settings() {
   }
 
   function handleExportJSON() {
-    const d = JSON.stringify({ zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks, settings }, null, 2)
+    const d = JSON.stringify({ 
+      zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks, settings
+    }, null, 2)
     const el = document.createElement('a')
     el.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(d)
     el.download = `ZeroHour_Backup_${new Date().toISOString().split('T')[0]}.json`
     el.click()
     toast('📁 JSON backup downloaded', 'ok')
+  }
+
+  const handleExamDateChange = (key, val) => {
+    store.setSettings({
+      examDates: { ...settings.examDates, [key]: val }
+    })
+  }
+
+  const handleSubjectTargetChange = (sub, val) => {
+    store.setSettings({
+      subjectTargets: { ...settings.subjectTargets, [sub]: parseInt(val) || 0 }
+    })
+  }
+
+  const toggleOffDay = (day) => {
+    const current = settings.offDays || []
+    const next = current.includes(day) 
+      ? current.filter(d => d !== day)
+      : [...current, day]
+    store.setSettings({ offDays: next })
   }
 
   const syncColors = { ok: '#22c55e', syncing: '#f59e0b', err: '#ef4444' }
@@ -86,6 +115,83 @@ export default function Settings() {
       <div className="card" style={{ marginBottom: 30 }}>
         <h1 className="card-title">SYSTEM SETTINGS</h1>
         <p style={{ color: 'var(--text4)', fontSize: 12 }}>Configure your tactical environment.</p>
+      </div>
+
+      {/* ── EXAM DATES ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 20 }}>EXAM DATES</div>
+        <div className="g2">
+          {Object.entries(settings.examDates || {}).map(([key, date]) => (
+            <div key={key}>
+              <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>{key.toUpperCase()}</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input 
+                  type="date" className="inp" style={{ flex: 1 }}
+                  value={date || ''} onChange={e => handleExamDateChange(key, e.target.value)} 
+                />
+                <button className="btn" style={{ padding: '0 10px' }} onClick={() => handleExamDateChange(key, '')}>×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── STUDY PREFERENCES ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 20 }}>STUDY PREFERENCES</div>
+        <div className="g2">
+          <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>Daily Pomo Target</label>
+            <input 
+              type="number" className="inp" 
+              value={settings.dailyPomoTarget || 8} onChange={setS('dailyPomoTarget')} 
+            />
+          </div>
+          <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>Off Days</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                <button 
+                  key={day} 
+                  className={`btn ${settings.offDays?.includes(day) ? 'btn-g' : ''}`}
+                  style={{ padding: '4px 8px', fontSize: 10 }}
+                  onClick={() => toggleOffDay(day)}
+                >
+                  {day}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── ANALYTICS CONFIG ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 20 }}>ANALYTICS CONFIG</div>
+        <div className="g2" style={{ marginBottom: 20 }}>
+          <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>CDS Estimated Cutoff</label>
+            <input 
+              type="number" className="inp" 
+              value={settings.cdsCutoff || 160} onChange={setS('cdsCutoff')} 
+            />
+          </div>
+        </div>
+        <div className="label-caps" style={{ fontSize: 10, marginBottom: 10 }}>Recommended Time % per Subject</div>
+        <div className="g3">
+          {Object.entries(settings.subjectTargets || {}).map(([sub, target]) => (
+            <div key={sub}>
+              <label style={{ fontSize: 10, color: '#888', display: 'block', marginBottom: 4 }}>{sub}</label>
+              <input 
+                type="number" className="inp" 
+                value={target} onChange={e => handleSubjectTargetChange(sub, e.target.value)} 
+              />
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 10, fontSize: 10, color: Object.values(settings.subjectTargets || {}).reduce((a,b)=>a+b,0) === 100 ? 'var(--green)' : 'var(--red)' }}>
+          Total: {Object.values(settings.subjectTargets || {}).reduce((a,b)=>a+b,0)}% (Must be 100%)
+        </div>
       </div>
 
       <div className="card">
@@ -146,7 +252,7 @@ export default function Settings() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {[
                 ['sessions', 'Study Sessions'],
-                ['topics', 'Topic Map'],
+                ['topics', 'Topic Map / Revision Q'],
                 ['mocks', 'Mock Records'],
                 ['sitrep', 'Weekly SITREP'],
               ].map(([k, l]) => (

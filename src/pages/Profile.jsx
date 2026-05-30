@@ -1,44 +1,62 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { auth, db } from '../firebase'
 import { updateProfile, sendPasswordResetEmail, deleteUser } from 'firebase/auth'
 import { doc, deleteDoc } from 'firebase/firestore'
 import { useAppStore } from '../store/useStore'
 import { useToast } from '../Toast'
 import { useConfirm } from '../Modal'
-import { EXAMS } from '../data'
+import { EXAMS, MASTER_TOPICS } from '../data'
 
 export default function Profile() {
   const user = auth.currentUser
   const toast = useToast()
   const confirm = useConfirm()
-  const settings = useAppStore(s => s.settings)
-  const setSettings = useAppStore(s => s.setSettings)
-  const [name, setName] = useState(user?.displayName || settings.name || '')
-  const [targetExam, setTargetExam] = useState(settings.targetExam || 'CDS I')
-  const [examDate, setExamDate] = useState(settings.afcatDate || '')
-  const [currentMock, setCurrentMock] = useState(settings.currentMockScore || 0)
-  const [targetMock, setTargetMock] = useState(settings.targetMockScore || 0)
+  const { profile, setProfile, zh_sessions, zh_mocks, zh_topicMap, streak } = useAppStore()
+  
+  const [name, setName] = useState(profile.name || user?.displayName || '')
+  const [tagline, setTagline] = useState(profile.tagline || 'Ready for Battle')
+  const [targetExam, setTargetExam] = useState(profile.targetExam || 'CDS')
+  
   const [isEditing, setIsEditing] = useState(false)
   const [deleteInput, setDeleteInput] = useState('')
 
+  // ── Aggregate Stats ──
+  const stats = useMemo(() => {
+    // Total Hours
+    const totalMinutes = zh_sessions.reduce((acc, s) => acc + (parseInt(s.duration) || 0), 0)
+    const totalHours = (totalMinutes / 60).toFixed(1)
+
+    // Personal Bests
+    const cdsMocks = zh_mocks.filter(m => m.type === 'CDS')
+    const afcatMocks = zh_mocks.filter(m => m.type === 'AFCAT')
+    const pbCDS = cdsMocks.length ? Math.max(...cdsMocks.map(m => m.calculatedMarks?.total || 0)) : 0
+    const pbAFCAT = afcatMocks.length ? Math.max(...afcatMocks.map(m => m.calculatedMarks?.total || 0)) : 0
+
+    // Topic Completion
+    let totalTopics = 0
+    Object.values(MASTER_TOPICS).forEach(sub => {
+      Object.values(sub.categories).forEach(cat => {
+        totalTopics += cat.topics.length
+      })
+    })
+    const confidentTopics = Object.values(zh_topicMap).filter(t => t.state === 'Confident').length
+    const completionRate = totalTopics > 0 ? ((confidentTopics / totalTopics) * 100).toFixed(1) : 0
+
+    return { totalHours, pbCDS, pbAFCAT, completionRate, confidentTopics, totalTopics }
+  }, [zh_sessions, zh_mocks, zh_topicMap])
+
   useEffect(() => {
-    if (user) {
-      setName(user.displayName || settings.name || '')
+    if (user && !profile.name) {
+      setName(user.displayName || '')
     }
-  }, [user, settings.name])
+  }, [user, profile.name])
 
   const handleSave = async () => {
     try {
-      if (user) {
+      if (user && name !== user.displayName) {
         await updateProfile(user, { displayName: name })
       }
-      setSettings({ 
-        name, 
-        targetExam, 
-        afcatDate: examDate,
-        currentMockScore: +currentMock,
-        targetMockScore: +targetMock
-      })
+      setProfile({ name, tagline, targetExam })
       toast('Profile updated successfully', 'ok')
       setIsEditing(false)
     } catch (err) {
@@ -62,11 +80,8 @@ export default function Profile() {
     }
 
     try {
-      // 1. Delete Firestore data
       await deleteDoc(doc(db, 'users', user.uid, 'userData', 'main'))
-      await deleteDoc(doc(db, 'users', user.uid)) // Base doc if exists
-
-      // 2. Delete Auth user
+      await deleteDoc(doc(db, 'users', user.uid))
       await deleteUser(user)
       toast('Account deleted successfully', 'ok')
     } catch (err) {
@@ -82,153 +97,168 @@ export default function Profile() {
   const isEmailProvider = user?.providerData[0]?.providerId === 'password'
 
   return (
-    <div className="page-inner fade-in">
-      <div className="card" style={{ maxWidth: '600px', margin: '0 auto', padding: '32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          {user?.photoURL ? (
-            <img 
-              src={user.photoURL} 
-              alt="Avatar" 
-              style={{ width: '100px', height: '100px', borderRadius: '50%', border: '2px solid var(--indigo)', marginBottom: '16px' }} 
-            />
-          ) : (
-            <div style={{ 
-              width: '100px', 
-              height: '100px', 
-              borderRadius: '50%', 
-              background: 'var(--bg3)', 
-              color: 'var(--indigo)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              fontSize: '32px', 
-              fontWeight: '800',
-              border: '2px solid var(--indigo)',
-              margin: '0 auto 16px'
-            }}>
-              {initials}
+    <div className="page-inner fade-in" style={{ paddingBottom: '100px' }}>
+      {/* ── Motivational Banner ── */}
+      <div className="motivational-banner">
+        <div className="banner-content">
+          <div className="tagline">{tagline.toUpperCase()}</div>
+          <div className="decoration" />
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '800px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        
+        {/* ── Profile Info ── */}
+        <div className="card">
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div className="avatar-ring">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Avatar" className="avatar-img" />
+              ) : (
+                <div className="avatar-placeholder">{initials}</div>
+              )}
             </div>
-          )}
-          <h1 style={{ fontSize: '24px', fontWeight: '800' }}>{name}</h1>
-          <p style={{ color: 'var(--text4)', fontSize: '14px' }}>{user?.email}</p>
+            <h1 style={{ fontSize: '20px', fontWeight: '800', margin: '10px 0 5px' }}>{name}</h1>
+            <p style={{ color: 'var(--text4)', fontSize: '12px' }}>{user?.email}</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label className="label-caps">Name</label>
+              <input 
+                type="text" className="inp" value={name} 
+                onChange={e => setName(e.target.value)} disabled={!isEditing}
+              />
+            </div>
+            <div>
+              <label className="label-caps">Tagline</label>
+              <input 
+                type="text" className="inp" value={tagline} 
+                onChange={e => setTagline(e.target.value)} disabled={!isEditing}
+              />
+            </div>
+            <div className="g2">
+              <div>
+                <label className="label-caps">Target Exam</label>
+                <select className="inp" value={targetExam} onChange={e => setTargetExam(e.target.value)} disabled={!isEditing}>
+                  <option value="CDS">CDS</option>
+                  <option value="AFCAT">AFCAT</option>
+                  <option value="Both">Both</option>
+                </select>
+              </div>
+            </div>
+
+            {isEditing ? (
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button className="btn btn-g" style={{ flex: 1 }} onClick={handleSave}>SAVE</button>
+                <button className="btn" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>CANCEL</button>
+              </div>
+            ) : (
+              <button className="btn btn-c" style={{ width: '100%' }} onClick={() => setIsEditing(true)}>EDIT PROFILE</button>
+            )}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="g2 keep">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Display Name</label>
-              <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                disabled={!isEditing}
-                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-              />
+        {/* ── Stats Overview ── */}
+        <div className="card" style={{ borderColor: 'var(--cyan)' }}>
+          <div className="label-caps" style={{ color: 'var(--cyan)', marginBottom: '20px' }}>Service Record</div>
+          
+          <div className="stats-grid">
+            <div className="stat-item">
+              <div className="icon">🔥</div>
+              <div className="val">{streak.current}</div>
+              <div className="lbl">Current Streak</div>
+              <div className="sub">Best: {streak.longest} days</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Target Exam</label>
-              <select 
-                value={targetExam} 
-                onChange={(e) => setTargetExam(e.target.value)} 
-                disabled={!isEditing}
-                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-              >
-                {EXAMS.map(ex => <option key={ex.i} value={ex.l}>{ex.l}</option>)}
-              </select>
+            <div className="stat-item">
+              <div className="icon">⏱</div>
+              <div className="val">{stats.totalHours}</div>
+              <div className="lbl">Hours Studied</div>
+              <div className="sub">All-time duration</div>
             </div>
-          </div>
-
-          <div className="g2 keep">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Exam Date</label>
-              <input 
-                type="date" 
-                value={examDate} 
-                onChange={(e) => setExamDate(e.target.value)} 
-                disabled={!isEditing}
-                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-              />
+            <div className="stat-item">
+              <div className="icon">🎯</div>
+              <div className="val">{stats.pbCDS}</div>
+              <div className="lbl">CDS Best</div>
+              <div className="sub">Out of 300</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Current Mock Score</label>
-              <input 
-                type="number" 
-                value={currentMock} 
-                onChange={(e) => setCurrentMock(e.target.value)} 
-                disabled={!isEditing}
-                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-              />
+            <div className="stat-item">
+              <div className="icon">✈</div>
+              <div className="val">{stats.pbAFCAT}</div>
+              <div className="lbl">AFCAT Best</div>
+              <div className="sub">Out of 375</div>
             </div>
           </div>
 
-          <div className="g2 keep">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Target Mock Score</label>
-              <input 
-                type="number" 
-                value={targetMock} 
-                onChange={(e) => setTargetMock(e.target.value)} 
-                disabled={!isEditing}
-                style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-              />
+          <div className="progress-card" style={{ marginTop: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span className="label-caps" style={{ fontSize: '10px' }}>Topic Map Completion</span>
+              <span style={{ color: 'var(--green)', fontSize: '12px', fontWeight: '800' }}>{stats.completionRate}%</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text3)', textTransform: 'uppercase' }}>Joined Date</label>
-              <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text4)', fontSize: '14px' }}>
-                {new Date(user?.metadata?.creationTime).toLocaleDateString()}
-              </div>
+            <div className="full-progress">
+              <div className="fill" style={{ width: `${stats.completionRate}%`, background: 'var(--green)' }} />
             </div>
-          </div>
-
-          {isEditing ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button className="btn btn-g" style={{ flex: 1 }} onClick={handleSave}>Save Changes</button>
-              <button className="btn" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>Cancel</button>
+            <div style={{ marginTop: '5px', fontSize: '10px', color: '#666' }}>
+              {stats.confidentTopics} / {stats.totalTopics} Topics Confident
             </div>
-          ) : (
-            <button className="btn btn-c" onClick={() => setIsEditing(true)}>Edit Profile</button>
-          )}
-
-          {isEmailProvider && (
-            <button className="btn" style={{ background: 'transparent', borderColor: 'var(--border3)' }} onClick={handlePasswordReset}>
-              Send Password Reset Email
-            </button>
-          )}
-
-          <div style={{ marginTop: '32px', borderTop: '1px solid var(--border)', paddingTop: '32px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--red)', marginBottom: '16px' }}>Danger Zone</h2>
-            <div style={{ background: 'rgba(248, 81, 73, 0.05)', border: '1px solid rgba(248, 81, 73, 0.2)', borderRadius: '12px', padding: '20px' }}>
-              <p style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '16px' }}>
-                Deleting your account is permanent and will erase all your progress and data.
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input 
-                  type="text" 
-                  placeholder='Type "DELETE" to confirm' 
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
-                  style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', color: 'var(--text)' }}
-                />
-                <button 
-                  className="btn btn-r" 
-                  onClick={() => confirm('DELETE ACCOUNT', 'Are you absolutely sure? This cannot be undone.', handleDeleteAccount)}
-                  disabled={deleteInput !== 'DELETE'}
-                >
-                  Delete My Account
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button className="btn" style={{ marginTop: '16px', background: 'var(--bg3)', color: 'var(--text2)' }} onClick={() => auth.signOut()}>
-            Sign Out
-          </button>
-
-          <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            <code style={{ fontSize: '10px', color: 'var(--text5)' }}>UID: {user?.uid}</code>
           </div>
         </div>
       </div>
+
+      <div style={{ maxWidth: '800px', margin: '20px auto' }}>
+        <div className="card" style={{ borderColor: 'var(--red)', background: 'rgba(239, 68, 68, 0.02)' }}>
+          <div className="label-caps" style={{ color: 'var(--red)', marginBottom: '15px' }}>Danger Zone</div>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>Type "DELETE" to permanently erase your tactical data.</p>
+              <input 
+                type="text" className="inp" placeholder='DELETE' 
+                value={deleteInput} onChange={e => setDeleteInput(e.target.value.toUpperCase())} 
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button className="btn btn-r" disabled={deleteInput !== 'DELETE'} onClick={handleDeleteAccount}>PURGE ACCOUNT</button>
+              <button className="btn" onClick={() => auth.signOut()}>LOGOUT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .motivational-banner {
+          width: 100%; height: 120px; background: #0a0a0a; border: 1px solid var(--border); 
+          margin-bottom: 30px; display: flex; align-items: center; justify-content: center;
+          position: relative; overflow: hidden; border-radius: 12px;
+        }
+        .banner-content { text-align: center; z-index: 2; }
+        .tagline { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; color: #ffd700; letter-spacing: 4px; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+        .decoration { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #ffd700, transparent); bottom: 20%; }
+        
+        .avatar-ring { 
+          width: 80px; height: 80px; border-radius: 50%; border: 2px solid var(--indigo); 
+          padding: 4px; margin: 0 auto; display: flex; align-items: center; justify-content: center;
+        }
+        .avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .avatar-placeholder { 
+          width: 100%; height: 100%; border-radius: 50%; background: var(--bg3); 
+          display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--indigo);
+        }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .stat-item { background: rgba(255,255,255,0.02); padding: 15px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .stat-item .icon { font-size: 1.2rem; margin-bottom: 5px; }
+        .stat-item .val { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; color: white; }
+        .stat-item .lbl { font-size: 10px; color: #888; text-transform: uppercase; margin: 2px 0; }
+        .stat-item .sub { font-size: 9px; color: #555; }
+
+        .full-progress { width: 100%; height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+        .full-progress .fill { height: 100%; transition: 1s; }
+
+        @media (max-width: 768px) {
+          div[style*="gridTemplateColumns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          .tagline { font-size: 1.2rem; }
+        }
+      `}</style>
     </div>
   )
 }

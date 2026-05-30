@@ -17,6 +17,7 @@ const MockTestLog = lazy(() => import('./pages/MockTestLog'));
 const TopicMap = lazy(() => import('./pages/TopicMap'));
 const WeeklySitrep = lazy(() => import('./pages/WeeklySitrep'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const Features = lazy(() => import('./pages/Features'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Profile = lazy(() => import('./pages/Profile'));
 
@@ -29,13 +30,14 @@ const PAGES = {
   topics:    TopicMap,
   sitrep:    WeeklySitrep,
   analytics: Analytics,
+  features:  Features,
   settings:  Settings,
   profile:   Profile,
 }
 
 const map = {
   '1': 'hq', '2': 'log', '3': 'pomo', '4': 'queue', '5': 'mocks_new',
-  '6': 'topics', '7': 'sitrep', '8': 'analytics', '9': 'settings', '0': 'profile'
+  '6': 'topics', '7': 'sitrep', '8': 'analytics', '9': 'features', '0': 'profile'
 }
 
 export default function App() {

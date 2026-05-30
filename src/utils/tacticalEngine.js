@@ -1,10 +1,30 @@
 // ── Tactical Logic Engine ──
 // Consolidates all core calculations for streaks, SR, and SITREP health.
 
-export const START_DATE = '2025-06-09';
+export const START_DATE = '2026-06-01'; // User specified Jun 1
 
 // ── Date Helpers ──
 export const getTodayStr = () => new Date().toISOString().split('T')[0];
+
+export const getPrepProgress = () => {
+  const start = new Date(START_DATE);
+  const now = new Date();
+  const afcatDate = new Date('2026-08-08');
+  const cdsDate = new Date('2026-09-13');
+
+  const totalAfcat = afcatDate - start;
+  const totalCds = cdsDate - start;
+
+  const consumedAfcat = now - start;
+  const consumedCds = now - start;
+
+  return {
+    afcat: Math.min(100, Math.max(0, (consumedAfcat / totalAfcat) * 100)),
+    cds: Math.min(100, Math.max(0, (consumedCds / totalCds) * 100)),
+    daysAfcat: Math.ceil((afcatDate - now) / (1000 * 60 * 60 * 24)),
+    daysCds: Math.ceil((cdsDate - now) / (1000 * 60 * 60 * 24))
+  };
+};
 
 export const getWeekNumber = (date = new Date()) => {
   const start = new Date(START_DATE);
@@ -13,70 +33,64 @@ export const getWeekNumber = (date = new Date()) => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24 * 7));
 };
 
-export const getPhase = (week) => {
-  return week <= 8 
-    ? { name: 'PHASE 1', desc: 'BALANCED PREP — CDS + AFCAT' }
-    : { name: 'PHASE 2', desc: 'CDS INTENSIFICATION' };
+export const getPhase = (date = new Date()) => {
+  const afcatDate = new Date('2026-08-08');
+  const now = new Date(date);
+  return now > afcatDate
+    ? { id: 'CDS', name: 'CDS MODE ACTIVE', desc: 'Post-AFCAT Specialization' }
+    : { id: 'AFCAT', name: 'AFCAT + CDS BALANCED', desc: 'Pre-AFCAT Phase' };
 };
 
-// ── Streak Calculation ──
-export const calculateStreak = (sessions) => {
-  const dates = [...new Set(sessions.map(s => s.date))].sort().reverse();
-  const today = getTodayStr();
-  let streak = 0;
-  let d = new Date();
-  
-  while (true) {
-    const dStr = d.toISOString().split('T')[0];
-    if (dates.includes(dStr)) {
-      streak++;
-      d.setDate(d.getDate() - 1);
-    } else {
-      // Allow for today being incomplete
-      if (dStr === today) {
-        d.setDate(d.getDate() - 1);
-        continue;
-      }
-      break;
-    }
+// ── XP & Rank Logic ──
+export const calculateRank = (xp, ranks) => {
+  let currentRank = ranks[0];
+  for (const r of ranks) {
+    if (xp >= r.minXP) currentRank = r;
+    else break;
   }
-  return streak;
+  const nextRank = ranks[ranks.indexOf(currentRank) + 1] || null;
+  const progress = nextRank 
+    ? ((xp - currentRank.minXP) / (nextRank.minXP - currentRank.minXP)) * 100 
+    : 100;
+  
+  return { ...currentRank, progress, nextRank };
 };
 
-// ── Spaced Repetition Logic ──
+// ── Spaced Repetition Logic (v2) ──
+export const getNextReviewDate = (level, fromDate = getTodayStr()) => {
+  const intervals = [1, 3, 7, 15, 30]; // R1 to R5
+  const days = intervals[level] || 30;
+  const d = new Date(fromDate);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
 export const getTopicDueStatus = (topicKey, data, today = getTodayStr()) => {
   if (!data.firstStudied) return null;
+  
+  const intervals = [1, 3, 7, 15, 30];
   const firstDate = new Date(data.firstStudied);
-  const intervals = [7, 14, 30];
-  const dueDates = intervals.map(days => {
+  
+  const levels = intervals.map((days, idx) => {
     const d = new Date(firstDate);
     d.setDate(d.getDate() + days);
-    return { days, date: d.toISOString().split('T')[0] };
-  });
-
-  const revisitsDone = data.revisits || [];
-
-  return dueDates.map(due => {
-    const isDone = revisitsDone.some(r => {
-      const rDate = new Date(r.date);
-      const dDate = new Date(due.date);
-      const diffDays = Math.abs((rDate - dDate) / (1000 * 60 * 60 * 24));
-      // ±2 day window for revision window
-      return diffDays <= 2 && (r.type === 'Spaced Revision' || r.type === 'Active Recall');
-    });
-
-    const dDate = new Date(due.date);
+    const dateStr = d.toISOString().split('T')[0];
+    
+    const isDone = (data.revisits || []).some(r => r.level === idx + 1);
+    const dDate = new Date(dateStr);
     const tDate = new Date(today);
     const diffDays = Math.ceil((tDate - dDate) / (1000 * 60 * 60 * 24));
 
     return {
-      ...due,
+      level: idx + 1,
+      date: dateStr,
       isDone,
       overdue: diffDays > 0 && !isDone ? diffDays : 0,
       dueToday: diffDays === 0 && !isDone,
-      upcoming: diffDays < 0 && diffDays >= -7 && !isDone
     };
   });
+
+  return levels;
 };
 
 export const getOverdueCount = (topicMap) => {
