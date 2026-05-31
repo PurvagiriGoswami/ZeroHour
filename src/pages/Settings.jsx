@@ -148,6 +148,30 @@ export default function Settings() {
             />
           </div>
           <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>Max Study Hours (Cap)</label>
+            <input 
+              type="number" className="inp" 
+              value={settings.maxStudyHours || 8} onChange={setS('maxStudyHours')} 
+            />
+          </div>
+        </div>
+        <div className="g2" style={{ marginTop: 20 }}>
+          <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>EOD Review Time</label>
+            <input 
+              type="time" className="inp" 
+              value={settings.eodReviewTime || '22:00'} onChange={setS('eodReviewTime')} 
+            />
+          </div>
+          <div>
+            <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>Morning Reminder</label>
+            <input 
+              type="time" className="inp" 
+              value={settings.morningReminderTime || '08:00'} onChange={setS('morningReminderTime')} 
+            />
+          </div>
+        </div>
+        <div style={{ marginTop: 20 }}>
             <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>Off Days</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
@@ -161,7 +185,6 @@ export default function Settings() {
                 </button>
               ))}
             </div>
-          </div>
         </div>
       </div>
 

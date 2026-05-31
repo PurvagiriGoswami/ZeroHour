@@ -17,9 +17,11 @@ const MockTestLog = lazy(() => import('./pages/MockTestLog'));
 const TopicMap = lazy(() => import('./pages/TopicMap'));
 const WeeklySitrep = lazy(() => import('./pages/WeeklySitrep'));
 const Analytics = lazy(() => import('./pages/Analytics'));
+const DailyTargets = lazy(() => import('./pages/DailyTargets'));
 const Features = lazy(() => import('./pages/Features'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Profile = lazy(() => import('./pages/Profile'));
+const WeeklyPlanner = lazy(() => import('./pages/WeeklyPlanner'));
 
 const PAGES = {
   hq:        HQDashboard,
@@ -30,14 +32,16 @@ const PAGES = {
   topics:    TopicMap,
   sitrep:    WeeklySitrep,
   analytics: Analytics,
+  targets:   DailyTargets,
   features:  Features,
   settings:  Settings,
   profile:   Profile,
+  weekly_planner: WeeklyPlanner,
 }
 
 const map = {
   '1': 'hq', '2': 'log', '3': 'pomo', '4': 'queue', '5': 'mocks_new',
-  '6': 'topics', '7': 'sitrep', '8': 'analytics', '9': 'features', '0': 'profile'
+  '6': 'topics', '7': 'sitrep', '8': 'analytics', '9': 'targets', '0': 'profile'
 }
 
 export default function App() {
@@ -54,6 +58,19 @@ export default function App() {
     typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
   )
   const [tab, setTab] = useState('hq')
+  const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false)
+
+  // Trigger Weekly Planner on Sunday
+  useEffect(() => {
+    const today = new Date();
+    const isSunday = today.getDay() === 0;
+    const lastPlanDate = localStorage.getItem('zh_last_plan_date');
+    const todayStr = today.toISOString().split('T')[0];
+
+    if (isSunday && lastPlanDate !== todayStr) {
+      setShowWeeklyPlanner(true);
+    }
+  }, []);
 
   // Handle Resize
   useEffect(() => {
@@ -90,6 +107,14 @@ export default function App() {
   if (isInitialLoad || !hasHydrated) return <Skeleton type="full" />
   if (!user) return <Login />
   if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} />
+  if (showWeeklyPlanner) return (
+    <Suspense fallback={<Skeleton type="page" />}>
+      <WeeklyPlanner onConfirm={() => {
+        setShowWeeklyPlanner(false);
+        localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
+      }} />
+    </Suspense>
+  );
 
   return (
     <div className={`app-shell ${isMenuCollapsed ? 'collapsed' : ''} ${isMobile ? 'mobile' : ''}`}>

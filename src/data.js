@@ -624,12 +624,13 @@ export const TABS = [
   { id:'topics',   label:'Topic Map',    icon:'🗺',  short:'MAP' },
   { id:'sitrep',   label:'Weekly SITREP',icon:'📡',  short:'REP' },
   { id:'analytics',label:'Performance',   icon:'📈',  short:'ANL' },
+  { id:'targets',  label:'Daily Targets', icon:'🎯',  short:'TGT' },
   { id:'features', label:'Tactical Tools',icon:'🛠',  short:'TLS' },
   { id:'profile',  label:'Profile',       icon:'👤',  short:'PRO' },
   { id:'settings', label:'Settings',      icon:'⚙',   short:'SET' },
 ]
 
-export const MOB_TAB_ORDER = ['hq','log','pomo','queue','mocks_new','topics','sitrep','analytics','features','profile','settings']
+export const MOB_TAB_ORDER = ['hq','log','pomo','queue','mocks_new','topics','sitrep','analytics','targets','features','profile','settings']
 
 export const RANKS = [
   { level: 0, title: 'Recruit', minXP: 0, icon: '🔰' },

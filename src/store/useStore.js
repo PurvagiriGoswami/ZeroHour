@@ -32,6 +32,19 @@ export const useAppStore = create((set, get) => ({
   zh_weeklyJournals: sg('zh_weeklyJournals', {}),
   zh_intentions: sg('zh_intentions', {}),
   zh_flashcards: sg('zh_flashcards', []),
+  zh_targets: sg('zh_targets', []),
+  zh_dailySummaries: sg('zh_dailySummaries', []),
+  zh_exam_registrations: sg('zh_exam_registrations', []),
+  zh_notifications: sg('zh_notifications', {
+    enabled: true,
+    frequency_auto_reduce: true,
+    morning_briefing: { enabled: true, time: '07:00' },
+    eod_reminder: { enabled: true, time: '21:30' },
+    topic_neglect: true,
+    exam_proximity: true,
+    rollover_streak: true,
+    completion_positive: true
+  }),
   
   // ── Supporting Data ──
   quizResults: sg('quizResults', []),
@@ -57,6 +70,9 @@ export const useAppStore = create((set, get) => ({
     accentColor: '#22c55e',
     examDates: { cds1: '2026-04-12', afcat: '', cds2: '2026-09-13', cds2027: '2027-04-11' },
     dailyPomoTarget: 8,
+    maxStudyHours: 8,
+    eodReviewTime: '22:00',
+    morningReminderTime: '08:00',
     offDays: ['Sunday'],
     cdsCutoff: 160,
     subjectTargets: { 'Mathematics': 30, 'English': 35, 'GS': 35 }
@@ -100,6 +116,13 @@ export const useAppStore = create((set, get) => ({
   setWeeklyJournals: (zh_weeklyJournals) => { set({ zh_weeklyJournals }); ss('zh_weeklyJournals', zh_weeklyJournals); get()._scheduleSync() },
   setIntentions: (zh_intentions) => { set({ zh_intentions }); ss('zh_intentions', zh_intentions); get()._scheduleSync() },
   setFlashcards: (zh_flashcards) => { set({ zh_flashcards }); ss('zh_flashcards', zh_flashcards); get()._scheduleSync() },
+  setTargets: (zh_targets) => { set({ zh_targets }); ss('zh_targets', zh_targets); get()._scheduleSync() },
+  setDailySummaries: (zh_dailySummaries) => { set({ zh_dailySummaries }); ss('zh_dailySummaries', zh_dailySummaries); get()._scheduleSync() },
+  setExamRegistrations: (zh_exam_registrations) => { set({ zh_exam_registrations }); ss('zh_exam_registrations', zh_exam_registrations); get()._scheduleSync() },
+  setNotifications: (updates) => {
+    const zh_notifications = { ...get().zh_notifications, ...updates }
+    set({ zh_notifications }); ss('zh_notifications', zh_notifications); get()._scheduleSync()
+  },
 
   setProfile: (updates) => {
     const profile = { ...get().profile, ...updates }
@@ -160,6 +183,10 @@ export const useAppStore = create((set, get) => ({
       zh_weeklyJournals: s.zh_weeklyJournals,
       zh_intentions: s.zh_intentions,
       zh_flashcards: s.zh_flashcards,
+      zh_targets: s.zh_targets,
+      zh_dailySummaries: s.zh_dailySummaries,
+      zh_exam_registrations: s.zh_exam_registrations,
+      zh_notifications: s.zh_notifications,
       quizResults: s.quizResults,
       plannerTasks: s.plannerTasks,
       settings: s.settings,
@@ -249,6 +276,10 @@ export const useAppStore = create((set, get) => ({
     if (data.zh_weeklyJournals) { set({ zh_weeklyJournals: data.zh_weeklyJournals }); ss('zh_weeklyJournals', data.zh_weeklyJournals) }
     if (data.zh_intentions) { set({ zh_intentions: data.zh_intentions }); ss('zh_intentions', data.zh_intentions) }
     if (data.zh_flashcards) { set({ zh_flashcards: data.zh_flashcards }); ss('zh_flashcards', data.zh_flashcards) }
+    if (data.zh_targets) { set({ zh_targets: data.zh_targets }); ss('zh_targets', data.zh_targets) }
+    if (data.zh_dailySummaries) { set({ zh_dailySummaries: data.zh_dailySummaries }); ss('zh_dailySummaries', data.zh_dailySummaries) }
+    if (data.zh_exam_registrations) { set({ zh_exam_registrations: data.zh_exam_registrations }); ss('zh_exam_registrations', data.zh_exam_registrations) }
+    if (data.zh_notifications) { set({ zh_notifications: data.zh_notifications }); ss('zh_notifications', data.zh_notifications) }
     if (data.quizResults) { set({ quizResults: data.quizResults }); ss('quizResults', data.quizResults) }
     if (data.plannerTasks) { set({ plannerTasks: data.plannerTasks }); ss('plannerTasks', data.plannerTasks) }
     
@@ -273,6 +304,19 @@ export const useAppStore = create((set, get) => ({
       streak: { current: 0, longest: 0, lastLoggedDate: '' },
       pomodoro: { date: '', completed: 0, target: 8 },
       sitrep: {},
+      zh_targets: [],
+      zh_dailySummaries: [],
+      zh_exam_registrations: [],
+      zh_notifications: {
+        enabled: true,
+        frequency_auto_reduce: true,
+        morning_briefing: { enabled: true, time: '07:00' },
+        eod_reminder: { enabled: true, time: '21:30' },
+        topic_neglect: true,
+        exam_proximity: true,
+        rollover_streak: true,
+        completion_positive: true
+      },
       settings: {
         name: 'Aspirant',
         targetExam: 'CDS',

@@ -6,9 +6,67 @@ export const START_DATE = '2026-06-01'; // User specified Jun 1
 // ── Date Helpers ──
 export const getTodayStr = () => new Date().toISOString().split('T')[0];
 
-export const getPrepProgress = () => {
+/**
+ * Calculates the second Sunday of a given month and year.
+ * Used for CDS I (April) and CDS II (September).
+ */
+export const getSecondSunday = (month, year) => {
+  // month is 1-indexed (4 for April, 9 for September)
+  const date = new Date(year, month - 1, 1);
+  let day = date.getDay(); // 0 (Sun) to 6 (Sat)
+  
+  // Find first Sunday
+  let firstSunday;
+  if (day === 0) {
+    firstSunday = 1;
+  } else {
+    firstSunday = 1 + (7 - day);
+  }
+  
+  const secondSunday = firstSunday + 7;
+  return new Date(year, month - 1, secondSunday);
+};
+
+/**
+ * Computes or updates system-managed exam registrations (CDS I & II).
+ */
+export const getSystemExams = (currentDate = new Date()) => {
+  const currentYear = currentDate.getFullYear();
+  
+  const cds1ThisYear = getSecondSunday(4, currentYear);
+  const cds2ThisYear = getSecondSunday(9, currentYear);
+  
+  const exams = [];
+  
+  // CDS I
+  if (currentDate <= cds1ThisYear) {
+    exams.push({ name: 'CDS I', date: cds1ThisYear, year: currentYear });
+  } else {
+    exams.push({ name: 'CDS I', date: getSecondSunday(4, currentYear + 1), year: currentYear + 1 });
+  }
+  
+  // CDS II
+  if (currentDate <= cds2ThisYear) {
+    exams.push({ name: 'CDS II', date: cds2ThisYear, year: currentYear });
+  } else {
+    exams.push({ name: 'CDS II', date: getSecondSunday(9, currentYear + 1), year: currentYear + 1 });
+  }
+  
+  return exams.map(e => ({
+    id: `sys_${e.name.replace(' ', '_')}_${e.year}`,
+    exam_name: e.name.replace(' ', '_'),
+    exam_date: e.date.toISOString().split('T')[0],
+    is_system_computed: true,
+    is_active: true,
+    year: e.year
+  }));
+};
+
+export const getPrepProgress = (activeExams = []) => {
   const start = new Date(START_DATE);
   const now = new Date();
+  
+  // Default fallback if no exams provided (keeping legacy behavior for safety)
   const afcatDate = new Date('2026-08-08');
   const cdsDate = new Date('2026-09-13');
 
@@ -18,11 +76,23 @@ export const getPrepProgress = () => {
   const consumedAfcat = now - start;
   const consumedCds = now - start;
 
+  // Find nearest exam from activeExams if available
+  const sortedExams = [...activeExams]
+    .filter(e => new Date(e.exam_date) >= now)
+    .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
+    
+  const nearest = sortedExams[0];
+  let nearestDays = null;
+  if (nearest) {
+    nearestDays = Math.ceil((new Date(nearest.exam_date) - now) / (1000 * 60 * 60 * 24));
+  }
+
   return {
     afcat: Math.min(100, Math.max(0, (consumedAfcat / totalAfcat) * 100)),
     cds: Math.min(100, Math.max(0, (consumedCds / totalCds) * 100)),
     daysAfcat: Math.ceil((afcatDate - now) / (1000 * 60 * 60 * 24)),
-    daysCds: Math.ceil((cdsDate - now) / (1000 * 60 * 60 * 24))
+    daysCds: Math.ceil((cdsDate - now) / (1000 * 60 * 60 * 24)),
+    nearestExam: nearest ? { ...nearest, daysRemaining: nearestDays } : null
   };
 };
 
@@ -200,3 +270,76 @@ export const getDailyMissions = (sessions, pomosToday, topicMap) => {
 
   return missions;
 };
+
+// ── Daily Targets Logic ──
+export const getRolloverTargets = (targets, yesterdayStr) => {
+  return targets
+    .filter(t => t.date === yesterdayStr && (t.status === 'pending' || t.status === 'incomplete' || t.status === 'partial'))
+    .map(t => {
+      const remainingMinutes = t.status === 'partial' 
+        ? Math.max(0, t.estimated_minutes - (t.actual_minutes || 0))
+        : t.estimated_minutes;
+      
+      return {
+        ...t,
+        id: `rolled_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        date: getTodayStr(),
+        estimated_minutes: remainingMinutes,
+        status: 'pending',
+        rolled_over_from: t.id,
+        rollover_count: (t.rollover_count || 0) + 1,
+        updated_at: new Date().toISOString()
+      };
+    });
+};
+
+export const calculateDailySummary = (dateStr, targets) => {
+  const dailyTargets = targets.filter(t => t.date === dateStr);
+  if (dailyTargets.length === 0) return null;
+
+  const plannedCount = dailyTargets.length;
+  const completedCount = dailyTargets.filter(t => t.status === 'complete').length;
+  const partialCount = dailyTargets.filter(t => t.status === 'partial').length;
+  const missedCount = dailyTargets.filter(t => t.status === 'incomplete').length;
+  
+  const totalPlannedMinutes = dailyTargets.reduce((acc, t) => acc + t.estimated_minutes, 0);
+  const totalActualMinutes = dailyTargets.reduce((acc, t) => acc + (t.actual_minutes || 0), 0);
+  
+  const completionRate = plannedCount > 0 ? (completedCount / plannedCount) * 100 : 0;
+
+  return {
+    id: `summary_${dateStr}`,
+    date: dateStr,
+    planned_count: plannedCount,
+    completed_count: completedCount,
+    partial_count: partialCount,
+    missed_count: missedCount,
+    total_planned_minutes: totalPlannedMinutes,
+    total_actual_minutes: totalActualMinutes,
+    completion_rate: completionRate
+  };
+};
+
+export const getAdaptiveSuggestions = (sessions, targets, summaries, topicMap) => {
+  // Simple version: suggest topics based on syllabus gaps and weak areas
+  const suggestions = [];
+  const today = getTodayStr();
+  
+  // 1. Weak subjects from sessions/mocks
+  const weakProfile = getWeaknessProfile(sessions, []);
+  weakProfile.forEach(p => {
+    suggestions.push({
+      title: `${p.subject} Recovery`,
+      type: 'Practice',
+      priority: 'High',
+      estimated_minutes: 60,
+      exam: 'All'
+    });
+  });
+
+  // 2. Syllabus gaps (untouched topics)
+  // ... can be added later
+
+  return suggestions.slice(0, 3);
+};
+
