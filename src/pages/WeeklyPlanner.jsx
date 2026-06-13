@@ -1,203 +1,366 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
-import { getTodayStr, getRolloverTargets } from '../utils/tacticalEngine';
+import { SUBJECT_COLORS } from '../data';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const TARGET_TYPES = ['Practice', 'Revision', 'Vocab', 'Mock Test', 'Reading'];
+// Full list of possible subjects
+const ALL_SUBJECTS = [
+  'Mathematics', 'English', 'Physics', 'Chemistry', 'Biology',
+  'Polity', 'Geography', 'Economics', 'History-Ancient', 
+  'History-Medieval', 'History-Modern', 'Reasoning', 'Revision', 
+  'PYQ', 'Mock Test', 'Current Affairs'
+];
 
-export default function WeeklyPlanner({ onConfirm }) {
+// Day names
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export default function WeeklyPlanner({ onNav }) {
   const { 
-    zh_targets, setTargets, 
-    zh_exam_registrations,
-    zh_sessions,
-    settings 
+    zh_weeklyTimetable, 
+    setWeeklyTimetable,
+    settings,
+    setSettings
   } = useAppStore(
     useShallow(s => ({
-      zh_targets: s.zh_targets,
-      setTargets: s.setTargets,
-      zh_exam_registrations: s.zh_exam_registrations,
-      zh_sessions: s.zh_sessions,
-      settings: s.settings
+      zh_weeklyTimetable: s.zh_weeklyTimetable,
+      setWeeklyTimetable: s.setWeeklyTimetable,
+      settings: s.settings,
+      setSettings: s.setSettings
     }))
   );
 
-  const [plannedDays, setPlannedDays] = useState({});
-  const [activeDay, setActiveDay] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({ title: '', type: 'Practice', estimated_minutes: 60, exam: 'All' });
+  // Local state for modal
+  const [editingSlot, setEditingSlot] = useState(null); // { dayIndex, slotIndex }
+  const [tempSlot, setTempSlot] = useState({ subject: 'Mathematics', duration: 60 });
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addDayIndex, setAddDayIndex] = useState(0);
 
-  // Get start of the current week (Monday)
-  const startOfWeek = useMemo(() => {
+  // Derive current week dates
+  const weekDates = useMemo(() => {
     const d = new Date();
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    return new Date(d.setDate(diff));
-  }, []);
-
-  // Pre-population logic
-  useEffect(() => {
-    const newPlan = {};
-    const today = new Date();
+    const currentDay = d.getDay();
+    const diff = d.getDate() - currentDay;
+    const startOfWeek = new Date(d.setDate(diff));
     
-    DAYS.forEach((dayName, idx) => {
+    return DAY_NAMES.map((_, idx) => {
       const date = new Date(startOfWeek);
       date.setDate(date.getDate() + idx);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      // Get existing targets for this day
-      const existing = zh_targets.filter(t => t.date === dateStr);
-      newPlan[dateStr] = {
-        name: dayName,
-        date: dateStr,
-        targets: existing,
-        isGhost: false
+      return {
+        dayName: DAY_NAMES[idx],
+        dateStr: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        isToday: new Date().toDateString() === date.toDateString()
       };
     });
+  }, []);
 
-    // Rule 1: Rolled-over items (simplified for planner view)
-    // In a real Sunday trigger, we'd look at Saturday's misses
-    
-    // Rule 2: Neglected topics (Rule: topics not touched in 7+ days)
-    const suggestions = [];
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    // This is a simplified check - in a full impl we'd iterate MASTER_TOPICS
-    // For now, let's just show the logic structure
-    
-    setPlannedDays(newPlan);
-  }, [zh_targets, startOfWeek]);
-
-  const getLoadColor = (minutes) => {
-    const cap = (settings.maxStudyHours || 8) * 60;
-    const ratio = minutes / cap;
-    if (ratio > 1) return 'var(--red)';
-    if (ratio >= 0.8) return 'var(--amber)';
-    return 'var(--green)';
+  // Ensure timetable is initialized
+  const getSafeTimetable = () => {
+    if (!Array.isArray(zh_weeklyTimetable.dailySlots)) {
+      return {
+        ...zh_weeklyTimetable,
+        dailySlots: DAY_NAMES.map(() => ({ slots: [] }))
+      };
+    }
+    return zh_weeklyTimetable;
   };
 
-  const handleConfirm = () => {
-    // Merge all planned days back into zh_targets
-    const allPlanned = Object.values(plannedDays).flatMap(d => d.targets);
-    // Remove old targets for these dates first to avoid duplicates
-    const weekDates = Object.keys(plannedDays);
-    const filtered = zh_targets.filter(t => !weekDates.includes(t.date));
-    setTargets([...filtered, ...allPlanned]);
-    if (onConfirm) onConfirm();
+  const safeTimetable = getSafeTimetable();
+
+  // Add a slot to a specific day
+  const addSlot = (dayIndex, subject = 'Mathematics', duration = 60) => {
+    const updatedTimetable = { ...safeTimetable };
+    if (!updatedTimetable.dailySlots[dayIndex]) {
+      updatedTimetable.dailySlots[dayIndex] = { slots: [] };
+    }
+    if (!Array.isArray(updatedTimetable.dailySlots[dayIndex].slots)) {
+      updatedTimetable.dailySlots[dayIndex].slots = [];
+    }
+    updatedTimetable.dailySlots[dayIndex].slots.push({ subject, duration });
+    setWeeklyTimetable(updatedTimetable);
+  };
+
+  // Remove a slot from a specific day
+  const removeSlot = (dayIndex, slotIndex) => {
+    const updatedTimetable = { ...safeTimetable };
+    updatedTimetable.dailySlots[dayIndex].slots.splice(slotIndex, 1);
+    setWeeklyTimetable(updatedTimetable);
+  };
+
+  // Save slot changes
+  const saveSlot = () => {
+    if (!editingSlot) return;
+    const updatedTimetable = { ...safeTimetable };
+    updatedTimetable.dailySlots[editingSlot.dayIndex].slots[editingSlot.slotIndex] = { ...tempSlot };
+    setWeeklyTimetable(updatedTimetable);
+    setEditingSlot(null);
+  };
+
+  // Open add modal
+  const openAddModal = (dayIndex) => {
+    setAddDayIndex(dayIndex);
+    setTempSlot({ subject: 'Mathematics', duration: 60 });
+    setShowAddModal(true);
+  };
+
+  // Save added slot
+  const saveAddSlot = () => {
+    addSlot(addDayIndex, tempSlot.subject, tempSlot.duration);
+    setShowAddModal(false);
+  };
+
+  // Reset entire week
+  const resetWeek = () => {
+    if (window.confirm('Are you sure you want to reset the entire timetable?')) {
+      const cleanTimetable = {
+        ...safeTimetable,
+        dailySlots: DAY_NAMES.map(() => ({ slots: [] }))
+      };
+      setWeeklyTimetable(cleanTimetable);
+    }
   };
 
   return (
     <div className="page-inner fade-in" style={{ paddingBottom: 100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
         <div>
-          <h1 className="card-title" style={{ marginBottom: 5 }}>WEEKLY STRATEGY</h1>
-          <p style={{ color: 'var(--text4)', fontSize: 11 }}>Plan your operational load for the week.</p>
+          <h1 className="card-title" style={{ marginBottom: 5 }}>WEEKLY OPERATIONAL TIMETABLE</h1>
+          <p style={{ color: 'var(--text4)', fontSize: 11 }}>
+            Build your perfect study schedule, then use it daily in Daily Targets
+          </p>
         </div>
-        <button className="btn btn-g" onClick={handleConfirm}>CONFIRM WEEK PLAN</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-g" onClick={() => onNav('targets')}>
+            🎯 Daily Targets
+          </button>
+          <button className="btn" onClick={resetWeek}>
+            🔄 Reset Week
+          </button>
+        </div>
       </div>
 
-      <div className="planner-grid" style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(7, 1fr)', 
-        gap: 12,
-        overflowX: 'auto',
-        paddingBottom: 20
-      }}>
-        {DAYS.map((day, idx) => {
-          const date = new Date(startOfWeek);
-          date.setDate(date.getDate() + idx);
-          const dateStr = date.toISOString().split('T')[0];
-          const dayData = plannedDays[dateStr] || { targets: [] };
-          const totalMins = dayData.targets.reduce((acc, t) => acc + t.estimated_minutes, 0);
-          const isToday = dateStr === getTodayStr();
-
-          return (
-            <div key={dateStr} className="planner-col" style={{ minWidth: 200 }}>
-              <div style={{ 
-                textAlign: 'center', 
-                marginBottom: 10, 
-                padding: 10, 
-                background: isToday ? 'var(--indigo)' : 'var(--bg2)',
-                borderRadius: 8,
-                border: isToday ? '1px solid var(--indigo)' : '1px solid var(--bg3)'
-              }}>
-                <div style={{ fontSize: 10, fontWeight: 800, color: isToday ? '#fff' : 'var(--text2)' }}>{day.toUpperCase()}</div>
-                <div style={{ fontSize: 12, color: isToday ? '#fff' : 'var(--text4)' }}>{date.getDate()} {date.toLocaleString('default', { month: 'short' })}</div>
-                <div style={{ 
-                  marginTop: 8, 
-                  height: 4, 
-                  background: 'var(--bg4)', 
-                  borderRadius: 2,
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    height: '100%', 
-                    width: `${Math.min(100, (totalMins / ((settings.maxStudyHours || 8) * 60)) * 100)}%`,
-                    background: getLoadColor(totalMins)
-                  }} />
-                </div>
+      {/* Timetable Grid */}
+      <div className="card" style={{ padding: 20 }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(7, 1fr)', 
+          gap: 15,
+          minWidth: 800
+        }}>
+          {/* Day Headers */}
+          {weekDates.map(({ dayName, dateStr, isToday }) => (
+            <div key={dayName} style={{ 
+              textAlign: 'center', 
+              padding: 10, 
+              borderBottom: isToday ? '2px solid var(--green)' : '2px solid var(--border)',
+              background: isToday ? 'rgba(34, 197, 94, 0.05)' : 'transparent'
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: isToday ? 'var(--green)' : '#fff' }}>
+                {dayName.toUpperCase()}
               </div>
+              <div style={{ fontSize: 10, color: 'var(--text4)' }}>{dateStr}</div>
+            </div>
+          ))}
+          
+          {/* Day Columns */}
+          {weekDates.map(({ dayName, isToday }, dayIndex) => (
+            <div key={dayName} style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: 10,
+              padding: 5
+            }}>
+              {/* Add Slot Button */}
+              <button 
+                className="btn" 
+                style={{ 
+                  fontSize: 10, 
+                  padding: '6px 10px',
+                  width: '100%',
+                  background: isToday ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg3)',
+                  borderColor: isToday ? 'var(--green)' : 'var(--border)'
+                }}
+                onClick={() => openAddModal(dayIndex)}
+              >
+                + Add Slot
+              </button>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {dayData.targets.map(t => (
-                  <div key={t.id} className="card" style={{ 
-                    padding: '8px 10px', 
-                    fontSize: 11,
-                    borderLeft: `3px solid ${t.isGhost ? 'transparent' : 'var(--indigo)'}`,
-                    borderStyle: t.isGhost ? 'dashed' : 'solid',
-                    borderColor: t.isGhost ? 'var(--text4)' : 'var(--indigo)',
-                    opacity: t.isGhost ? 0.6 : 1
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{t.title}</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text4)', fontSize: 9 }}>
-                      <span>{t.type}</span>
-                      <span>{t.estimated_minutes}m</span>
+              {/* Slots */}
+              {safeTimetable.dailySlots[dayIndex]?.slots?.map((slot, slotIndex) => {
+                const subColor = SUBJECT_COLORS[slot.subject] || '#22c55e';
+                return (
+                  <div 
+                    key={slotIndex}
+                    className="card" 
+                    style={{ 
+                      padding: 12, 
+                      borderLeft: `4px solid ${subColor}`,
+                      background: 'var(--bg3)',
+                      cursor: 'pointer',
+                      transition: 'transform 0.1s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 5
+                    }}
+                    onClick={() => {
+                      setEditingSlot({ dayIndex, slotIndex });
+                      setTempSlot({ ...slot });
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: 11, color: '#fff' }}>
+                      {slot.subject.toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text4)' }}>
+                      ⏱ {slot.duration} mins
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 5 }}>
+                      <button 
+                        className="btn" 
+                        style={{ 
+                          padding: '3px 6px', 
+                          fontSize: 9,
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          borderColor: 'rgba(239, 68, 68, 0.3)',
+                          color: 'var(--red)'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSlot(dayIndex, slotIndex);
+                        }}
+                      >
+                        🗑️ Remove
+                      </button>
                     </div>
                   </div>
-                ))}
-                
-                <button 
-                  className="btn" 
-                  style={{ width: '100%', padding: '8px', fontSize: 10, border: '1px dashed var(--bg4)', background: 'transparent' }}
-                  onClick={() => {
-                    setActiveDay(dateStr);
-                    setShowAddForm(true);
-                  }}
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add Slot Modal */}
+      {showAddModal && (
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          background: 'rgba(0,0,0,0.8)', 
+          zIndex: 1000, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: 20
+        }}>
+          <div className="card fade-in" style={{ maxWidth: 400, width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0 }}>Add Study Slot</h3>
+              <button className="btn" style={{ padding: '4px 8px', fontSize: 10 }} onClick={() => setShowAddModal(false)}>
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+              <div>
+                <label className="label-caps" style={{ fontSize: 10, display: 'block', marginBottom: 8 }}>
+                  Subject
+                </label>
+                <select 
+                  className="inp" 
+                  value={tempSlot.subject} 
+                  onChange={(e) => setTempSlot({ ...tempSlot, subject: e.target.value })}
                 >
-                  + ADD TARGET
+                  {ALL_SUBJECTS.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label-caps" style={{ fontSize: 10, display: 'block', marginBottom: 8 }}>
+                  Duration (minutes)
+                </label>
+                <input 
+                  type="number" 
+                  className="inp" 
+                  value={tempSlot.duration} 
+                  onChange={(e) => setTempSlot({ ...tempSlot, duration: parseInt(e.target.value) || 60 })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button className="btn" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                  Cancel
+                </button>
+                <button className="btn btn-g" style={{ flex: 1 }} onClick={saveAddSlot}>
+                  Add Slot
                 </button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
 
-      {showAddForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      {/* Edit Slot Modal */}
+      {editingSlot && (
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          background: 'rgba(0,0,0,0.8)', 
+          zIndex: 1000, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: 20
+        }}>
           <div className="card fade-in" style={{ maxWidth: 400, width: '100%' }}>
-            <div className="label-caps" style={{ marginBottom: 20 }}>Add Target for {plannedDays[activeDay]?.name}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0 }}>Edit Slot</h3>
+              <button className="btn" style={{ padding: '4px 8px', fontSize: 10 }} onClick={() => setEditingSlot(null)}>
+                Close
+              </button>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-              <input className="inp" placeholder="Target Title" value={form.title} onChange={e => setForm({...form, title: e.target.value})} />
-              <select className="inp" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
-                {TARGET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input type="number" className="inp" placeholder="Minutes" value={form.estimated_minutes} onChange={e => setForm({...form, estimated_minutes: parseInt(e.target.value)})} />
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn" style={{ flex: 1 }} onClick={() => setShowAddForm(false)}>CANCEL</button>
-                <button className="btn btn-g" style={{ flex: 1 }} onClick={() => {
-                  const newTarget = {
-                    ...form,
-                    id: `planner_${Date.now()}`,
-                    date: activeDay,
-                    status: 'pending'
-                  };
-                  const updatedPlan = { ...plannedDays };
-                  updatedPlan[activeDay].targets.push(newTarget);
-                  setPlannedDays(updatedPlan);
-                  setShowAddForm(false);
-                  setForm({ title: '', type: 'Practice', estimated_minutes: 60, exam: 'All' });
-                }}>ADD</button>
+              <div>
+                <label className="label-caps" style={{ fontSize: 10, display: 'block', marginBottom: 8 }}>
+                  Subject
+                </label>
+                <select 
+                  className="inp" 
+                  value={tempSlot.subject} 
+                  onChange={(e) => setTempSlot({ ...tempSlot, subject: e.target.value })}
+                >
+                  {ALL_SUBJECTS.map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label-caps" style={{ fontSize: 10, display: 'block', marginBottom: 8 }}>
+                  Duration (minutes)
+                </label>
+                <input 
+                  type="number" 
+                  className="inp" 
+                  value={tempSlot.duration} 
+                  onChange={(e) => setTempSlot({ ...tempSlot, duration: parseInt(e.target.value) || 60 })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <button className="btn" style={{ flex: 1 }} onClick={() => setEditingSlot(null)}>
+                  Cancel
+                </button>
+                <button className="btn btn-g" style={{ flex: 1 }} onClick={saveSlot}>
+                  Save Changes
+                </button>
               </div>
             </div>
           </div>

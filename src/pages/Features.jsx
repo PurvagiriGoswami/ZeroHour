@@ -1,18 +1,39 @@
 import { useState, useMemo } from 'react';
 import { useAppStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
-import { MASTER_TOPICS } from '../data';
+import { MASTER_TOPICS, SUBJECT_COLORS } from '../data';
 
-export default function FeatureModule() {
+export default function FeatureModule({ onNav }) {
   const { 
     zh_errors, setErrors, 
     zh_doubts, setDoubts, 
     zh_feynman, setFeynman, 
     zh_flashcards, setFlashcards,
-    zh_xp, setXP 
-  } = useAppStore();
+    zh_xp, setXP,
+    zh_weeklyTimetable
+  } = useAppStore(
+    useShallow(s => ({
+      zh_errors: s.zh_errors,
+      setErrors: s.setErrors,
+      zh_doubts: s.zh_doubts,
+      setDoubts: s.setDoubts,
+      zh_feynman: s.zh_feynman,
+      setFeynman: s.setFeynman,
+      zh_flashcards: s.zh_flashcards,
+      setFlashcards: s.setFlashcards,
+      zh_xp: s.zh_xp,
+      setXP: s.setXP,
+      zh_weeklyTimetable: s.zh_weeklyTimetable
+    }))
+  );
 
-  const [activeTab, setActiveTab] = useState('errors'); // errors | doubts | feynman | flashcards
+  const [activeTab, setActiveTab] = useState('errors'); // errors | doubts | feynman | flashcards | syllabus_quick_ref
+  const [expandedSubjects, setExpandedSubjects] = useState({});
+
+  // Collapsible logic
+  const toggleSubjectExpand = (sub) => {
+    setExpandedSubjects(prev => ({ ...prev, [sub]: !prev[sub] }));
+  };
 
   // 4. Error Log
   const [errorForm, setErrorForm] = useState({ subject: 'Mathematics', topic: '', mistake: '', correct: '' });
@@ -47,17 +68,32 @@ export default function FeatureModule() {
     setCardForm({ title: '', content: '', subject: 'Mathematics' });
   };
 
+  // Get syllabus data
+  const syllabusData = zh_weeklyTimetable?.subjectSyllabus || {};
+
   return (
     <div className="page-inner fade-in" style={{ paddingBottom: 100 }}>
+      {/* Header and Jump Shortcut */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25, flexWrap: 'wrap', gap: 15 }}>
+        <div>
+          <h1 className="card-title" style={{ marginBottom: 5 }}>STUDY & DRILL TOOLS</h1>
+          <p style={{ color: 'var(--text4)', fontSize: 11 }}>Access auxiliary modules to patch core prep details and reference syllabus intel.</p>
+        </div>
+        <button className="btn btn-g" onClick={() => onNav && onNav('planner')} style={{ fontWeight: 'bold' }}>
+          📅 JUMP TO TODAY'S PLANNER SLOT
+        </button>
+      </div>
+
+      {/* Tab Menu */}
       <div className="tab-bar-tactical" style={{ display: 'flex', gap: 10, marginBottom: 25, overflowX: 'auto', paddingBottom: 10 }}>
-        {['errors', 'doubts', 'feynman', 'flashcards'].map(t => (
+        {['errors', 'doubts', 'feynman', 'flashcards', 'syllabus_quick_ref'].map(t => (
           <button 
             key={t} 
             className={`btn ${activeTab === t ? 'active' : ''}`}
             onClick={() => setActiveTab(t)}
             style={{ fontSize: 10, minWidth: 100 }}
           >
-            {t.toUpperCase()}
+            {t === 'syllabus_quick_ref' ? 'SYLLABUS REF' : t.toUpperCase()}
           </button>
         ))}
       </div>
@@ -65,7 +101,7 @@ export default function FeatureModule() {
       {activeTab === 'errors' && (
         <div className="fade-in">
           <div className="card">
-            <div className="label-caps" style={{ marginBottom: 20 }}>4. Error Log with Pattern Alerts</div>
+            <div className="label-caps" style={{ marginBottom: 20 }}>Error Log with Pattern Alerts</div>
             <form onSubmit={handleAddError} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
               <div className="g2">
                 <select className="inp" value={errorForm.subject} onChange={e => setErrorForm({...errorForm, subject: e.target.value})}>
@@ -97,7 +133,7 @@ export default function FeatureModule() {
       {activeTab === 'doubts' && (
         <div className="fade-in">
           <div className="card">
-            <div className="label-caps" style={{ marginBottom: 20 }}>14. Doubt Tracker</div>
+            <div className="label-caps" style={{ marginBottom: 20 }}>Doubt Tracker</div>
             <form onSubmit={handleAddDoubt} style={{ display: 'flex', gap: 10 }}>
               <select className="inp" style={{ width: 120 }} value={doubtForm.subject} onChange={e => setDoubtForm({...doubtForm, subject: e.target.value})}>
                 {Object.keys(MASTER_TOPICS).map(s => <option key={s} value={s}>{s}</option>)}
@@ -130,7 +166,7 @@ export default function FeatureModule() {
       {activeTab === 'feynman' && (
         <div className="fade-in">
           <div className="card">
-            <div className="label-caps" style={{ marginBottom: 20 }}>12. Feynman Mode — Simple Explanation</div>
+            <div className="label-caps" style={{ marginBottom: 20 }}>Feynman Mode — Simple Explanation</div>
             <form onSubmit={handleAddFeynman} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
               <select className="inp" value={feynmanForm.subject} onChange={e => setFeynmanForm({...feynmanForm, subject: e.target.value})}>
                 {Object.keys(MASTER_TOPICS).map(s => <option key={s} value={s}>{s}</option>)}
@@ -153,7 +189,7 @@ export default function FeatureModule() {
       {activeTab === 'flashcards' && (
         <div className="fade-in">
           <div className="card">
-            <div className="label-caps" style={{ marginBottom: 20 }}>13. Formula & Fact Sheet Builder</div>
+            <div className="label-caps" style={{ marginBottom: 20 }}>Formula & Fact Sheet Builder</div>
             <form onSubmit={handleAddCard} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
               <div className="g2">
                 <input className="inp" placeholder="Title/Formula" value={cardForm.title} onChange={e => setCardForm({...cardForm, title: e.target.value})} required />
@@ -176,6 +212,77 @@ export default function FeatureModule() {
                 <div style={{ fontSize: 11, color: 'var(--text3)' }}>{c.content}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'syllabus_quick_ref' && (
+        <div className="fade-in">
+          <div className="card" style={{ marginBottom: 20 }}>
+            <div className="label-caps" style={{ marginBottom: 10 }}>Syllabus Quick Reference</div>
+            <p style={{ color: 'var(--text4)', fontSize: 11, marginBottom: 0 }}>Click subjects to expand and reference phase divisions.</p>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {Object.keys(syllabusData).map(sub => {
+              const isOpen = !!expandedSubjects[sub];
+              const subColor = SUBJECT_COLORS[sub] || 'var(--indigo)';
+              const phases = syllabusData[sub] || [];
+
+              return (
+                <div 
+                  key={sub} 
+                  className="card" 
+                  style={{ 
+                    padding: 0, 
+                    overflow: 'hidden', 
+                    border: `1px solid ${isOpen ? subColor : 'var(--border)'}` 
+                  }}
+                >
+                  {/* Collapsible Header */}
+                  <div 
+                    onClick={() => toggleSubjectExpand(sub)}
+                    style={{ 
+                      padding: '15px 20px', 
+                      background: isOpen ? `${subColor}08` : 'transparent', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      cursor: 'pointer' 
+                    }}
+                  >
+                    <span style={{ fontWeight: 'bold', fontSize: 13, color: isOpen ? subColor : '#fff' }}>
+                      {sub.toUpperCase()}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text4)' }}>
+                      {isOpen ? '▲ COLLAPSE' : '▼ EXPAND'}
+                    </span>
+                  </div>
+
+                  {/* Collapsible Body */}
+                  {isOpen && (
+                    <div style={{ padding: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 15 }}>
+                      {phases.map((topics, idx) => (
+                        <div key={idx} style={{ padding: 12, background: 'var(--bg3)', borderRadius: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                            <span className="badge" style={{ background: subColor, color: '#000', fontWeight: 'bold', fontSize: 9 }}>
+                              PHASE {idx + 1}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                            {topics.map((t, tIdx) => (
+                              <div key={tIdx} style={{ fontSize: 11, color: 'var(--text2)', paddingLeft: 8 }}>
+                                • {t}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

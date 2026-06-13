@@ -63,7 +63,7 @@ export default function Header({ onNav, onMenuClick, isCollapsed, onToggleCollap
         {/* Brand */}
         <div className="hdr-brand" onClick={() => onNav('hq')} style={{ cursor: 'pointer' }}>
           <div className="hdr-text">
-            <div className="hdr-title" style={{ fontSize: 20, letterSpacing: -1, background: 'none', webkitTextFillColor: 'var(--text)', fontWeight: 800 }}>ZeroHour</div>
+            <div className="hdr-title" style={{ fontSize: 20, letterSpacing: -1, fontWeight: 800 }}>ZeroHour</div>
             <div className="hdr-sub" style={{ fontSize: 8, letterSpacing: 2, color: 'var(--text4)', marginTop: 0 }}>STRATEGIC ACADEMY</div>
           </div>
         </div>

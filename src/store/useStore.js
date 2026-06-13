@@ -2,7 +2,8 @@ import { create } from 'zustand'
 import { db, auth } from '../firebase'
 import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
-import { scheduleSyncToFirestore } from '../services/firebaseSync'
+import { scheduleSyncToFirestore, unsanitizeFromFirestore } from '../services/firebaseSync'
+import { DEFAULT_EXAM_LIST, DEFAULT_CDS_TIMETABLE, DEFAULT_CDS_SYLLABUS } from '../data'
 
 // ── LocalStorage helpers ──
 const sg = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb } catch { return fb } }
@@ -45,6 +46,25 @@ export const useAppStore = create((set, get) => ({
     rollover_streak: true,
     completion_positive: true
   }),
+  
+  // ── Weekly Planner & Exam Slices ──
+  zh_weeklyTimetable: sg('zh_weeklyTimetable', {
+    templateId: 'user-configurable',
+    cycleStartDate: '2026-06-15',
+    dailySlots: [
+      { slots: [] }, // Monday
+      { slots: [] }, // Tuesday
+      { slots: [] }, // Wednesday
+      { slots: [] }, // Thursday
+      { slots: [] }, // Friday
+      { slots: [] }, // Saturday
+      { slots: [] }  // Sunday
+    ],
+    subjectSyllabus: DEFAULT_CDS_SYLLABUS
+  }),
+  zh_dailyChecklist: sg('zh_dailyChecklist', {}),
+  zh_sessionLogs: sg('zh_sessionLogs', []),
+  zh_examList: sg('zh_examList', DEFAULT_EXAM_LIST),
   
   // ── Supporting Data ──
   quizResults: sg('quizResults', []),
@@ -103,6 +123,10 @@ export const useAppStore = create((set, get) => ({
   setWeeklyChecks: (zh_weeklyChecks) => { set({ zh_weeklyChecks }); ss('zh_weeklyChecks', zh_weeklyChecks); get()._scheduleSync() },
   setQuizResults: (quizResults) => { set({ quizResults }); ss('quizResults', quizResults); get()._scheduleSync() },
   setPlannerTasks: (plannerTasks) => { set({ plannerTasks }); ss('plannerTasks', plannerTasks); get()._scheduleSync() },
+  setWeeklyTimetable: (zh_weeklyTimetable) => { set({ zh_weeklyTimetable }); ss('zh_weeklyTimetable', zh_weeklyTimetable); get()._scheduleSync() },
+  setDailyChecklist: (zh_dailyChecklist) => { set({ zh_dailyChecklist }); ss('zh_dailyChecklist', zh_dailyChecklist); get()._scheduleSync() },
+  setSessionLogs: (zh_sessionLogs) => { set({ zh_sessionLogs }); ss('zh_sessionLogs', zh_sessionLogs); get()._scheduleSync() },
+  setExamList: (zh_examList) => { set({ zh_examList }); ss('zh_examList', zh_examList); get()._scheduleSync() },
   
   setErrors: (zh_errors) => { set({ zh_errors }); ss('zh_errors', zh_errors); get()._scheduleSync() },
   setDoubts: (zh_doubts) => { set({ zh_doubts }); ss('zh_doubts', zh_doubts); get()._scheduleSync() },
@@ -193,7 +217,11 @@ export const useAppStore = create((set, get) => ({
       profile: s.profile,
       streak: s.streak,
       pomodoro: s.pomodoro,
-      sitrep: s.sitrep
+      sitrep: s.sitrep,
+      zh_weeklyTimetable: s.zh_weeklyTimetable,
+      zh_dailyChecklist: s.zh_dailyChecklist,
+      zh_sessionLogs: s.zh_sessionLogs,
+      zh_examList: s.zh_examList
     }
     
     scheduleSyncToFirestore(uid, stateToSync)
@@ -260,7 +288,9 @@ export const useAppStore = create((set, get) => ({
     })
   },
 
-  _applyData: (data) => {
+  _applyData: (rawData) => {
+    const data = unsanitizeFromFirestore(rawData);
+    
     if (data.zh_sessions) { set({ zh_sessions: data.zh_sessions }); ss('zh_sessions', data.zh_sessions) }
     if (data.zh_topicMap) { set({ zh_topicMap: data.zh_topicMap }); ss('zh_topicMap', data.zh_topicMap) }
     if (data.zh_mocks) { set({ zh_mocks: data.zh_mocks }); ss('zh_mocks', data.zh_mocks) }
@@ -282,6 +312,10 @@ export const useAppStore = create((set, get) => ({
     if (data.zh_notifications) { set({ zh_notifications: data.zh_notifications }); ss('zh_notifications', data.zh_notifications) }
     if (data.quizResults) { set({ quizResults: data.quizResults }); ss('quizResults', data.quizResults) }
     if (data.plannerTasks) { set({ plannerTasks: data.plannerTasks }); ss('plannerTasks', data.plannerTasks) }
+    if (data.zh_weeklyTimetable) { set({ zh_weeklyTimetable: data.zh_weeklyTimetable }); ss('zh_weeklyTimetable', data.zh_weeklyTimetable) }
+    if (data.zh_dailyChecklist) { set({ zh_dailyChecklist: data.zh_dailyChecklist }); ss('zh_dailyChecklist', data.zh_dailyChecklist) }
+    if (data.zh_sessionLogs) { set({ zh_sessionLogs: data.zh_sessionLogs }); ss('zh_sessionLogs', data.zh_sessionLogs) }
+    if (data.zh_examList) { set({ zh_examList: data.zh_examList }); ss('zh_examList', data.zh_examList) }
     
     if (data.profile) { set({ profile: data.profile }); ss('zh_profile', data.profile) }
     if (data.streak) { set({ streak: data.streak }); ss('zh_streak', data.streak) }
@@ -300,6 +334,10 @@ export const useAppStore = create((set, get) => ({
       zh_sessions: [], zh_topicMap: {}, zh_mocks: [],
       zh_weeklyChecks: [], zh_pomodoro_today: 0, zh_last_pomo_date: null,
       quizResults: [], plannerTasks: [],
+      zh_weeklyTimetable: null,
+      zh_dailyChecklist: {},
+      zh_sessionLogs: [],
+      zh_examList: DEFAULT_EXAM_LIST,
       profile: { name: 'Aspirant', tagline: 'Ready for Battle', targetExam: 'CDS' },
       streak: { current: 0, longest: 0, lastLoggedDate: '' },
       pomodoro: { date: '', completed: 0, target: 8 },
@@ -342,10 +380,16 @@ export const useAppStore = create((set, get) => ({
       zh_sessions: [], zh_topicMap: {}, zh_mocks: [],
       zh_weeklyChecks: [], zh_pomodoro_today: 0, zh_last_pomo_date: null,
       quizResults: [], plannerTasks: [],
+      zh_weeklyTimetable: null,
+      zh_dailyChecklist: {},
+      zh_sessionLogs: [],
+      zh_examList: DEFAULT_EXAM_LIST,
     })
     ss('zh_sessions', []); ss('zh_topicMap', {}); ss('zh_mocks', [])
     ss('zh_weeklyChecks', []); ss('zh_pomodoro_today', 0)
     ss('quizResults', []); ss('plannerTasks', [])
+    ss('zh_weeklyTimetable', null); ss('zh_dailyChecklist', {})
+    ss('zh_sessionLogs', []); ss('zh_examList', DEFAULT_EXAM_LIST)
     get()._scheduleSync()
   },
 }))

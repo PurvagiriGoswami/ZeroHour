@@ -6,7 +6,11 @@ import SafeChart from '../components/SafeChart'
 import { MASTER_TOPICS, RADAR_SUBJECTS } from '../data'
 
 export default function Analytics() {
-  const { zh_mocks, zh_topicMap, zh_sessions, settings, zh_radar, zh_errors, zh_xp, zh_targets, zh_dailySummaries } = useAppStore(
+  const { 
+    zh_mocks, zh_topicMap, zh_sessions, settings, zh_radar, 
+    zh_errors, zh_xp, zh_targets, zh_dailySummaries, 
+    zh_weeklyTimetable, zh_dailyChecklist 
+  } = useAppStore(
     useShallow(s => ({
       zh_mocks: s.zh_mocks,
       zh_topicMap: s.zh_topicMap,
@@ -16,7 +20,9 @@ export default function Analytics() {
       zh_errors: s.zh_errors,
       zh_xp: s.zh_xp,
       zh_targets: s.zh_targets,
-      zh_dailySummaries: s.zh_dailySummaries
+      zh_dailySummaries: s.zh_dailySummaries,
+      zh_weeklyTimetable: s.zh_weeklyTimetable,
+      zh_dailyChecklist: s.zh_dailyChecklist
     }))
   )
 
@@ -117,6 +123,119 @@ export default function Analytics() {
     }));
   }, [zh_targets]);
 
+  // Phase Progress calculations
+  const phaseProgressData = useMemo(() => {
+    if (!zh_weeklyTimetable?.subjectRotationTracker || !zh_weeklyTimetable?.subjectSyllabus) {
+      return [];
+    }
+    return Object.entries(zh_weeklyTimetable.subjectRotationTracker).map(([subject, currentPhase]) => {
+      const syllabus = zh_weeklyTimetable.subjectSyllabus[subject] || [];
+      const totalPhases = syllabus.length;
+      return {
+        subject,
+        currentPhase,
+        totalPhases,
+        percent: totalPhases > 0 ? Math.round((currentPhase / totalPhases) * 100) : 0
+      };
+    });
+  }, [zh_weeklyTimetable]);
+
+  // Slot completion rate chart data
+  const slotTypeCompletion = useMemo(() => {
+    const counts = {
+      'Maths': { done: 0, total: 0 },
+      'Economics': { done: 0, total: 0 },
+      'GS-Subject': { done: 0, total: 0 },
+      'Revision': { done: 0, total: 0 },
+      'PYQ': { done: 0, total: 0 },
+      'Mock': { done: 0, total: 0 },
+      'Current Affairs': { done: 0, total: 0 }
+    };
+
+    Object.values(zh_dailyChecklist || {}).forEach(dayData => {
+      if (!dayData) return;
+      if (dayData.maths) {
+        counts['Maths'].total++;
+        if (dayData.maths.done) counts['Maths'].done++;
+      }
+      if (dayData.economics) {
+        counts['Economics'].total++;
+        if (dayData.economics.done) counts['Economics'].done++;
+      }
+      if (dayData.revision) {
+        counts['Revision'].total++;
+        if (dayData.revision.done) counts['Revision'].done++;
+      }
+      if (dayData.pyq) {
+        counts['PYQ'].total++;
+        if (dayData.pyq.done) counts['PYQ'].done++;
+      }
+      if (dayData.currentAffairs) {
+        counts['Current Affairs'].total++;
+        if (dayData.currentAffairs.done) counts['Current Affairs'].done++;
+      }
+      if (dayData.mock) {
+        counts['Mock'].total++;
+        if (dayData.mock.done) counts['Mock'].done++;
+      }
+      if (dayData.subjects) {
+        Object.keys(dayData.subjects).forEach(subName => {
+          const topics = dayData.subjects[subName];
+          Object.values(topics).forEach(topicState => {
+            counts['GS-Subject'].total += 2;
+            if (topicState.understood) counts['GS-Subject'].done++;
+            if (topicState.onepager) counts['GS-Subject'].done++;
+          });
+        });
+      }
+    });
+
+    return Object.entries(counts).map(([name, val]) => ({
+      name,
+      rate: val.total > 0 ? Math.round((val.done / val.total) * 100) : 0,
+      total: val.total
+    }));
+  }, [zh_dailyChecklist]);
+
+  // Weak Subject Alert Panel (one-pager completion < 60%)
+  const weakSubjectAlerts = useMemo(() => {
+    const alerts = [];
+    const subjectsToAnalyze = [
+      'Physics', 'Chemistry', 'Biology', 'Polity', 'Geography', 'Economics',
+      'History-Ancient', 'History-Medieval', 'History-Modern'
+    ];
+    
+    subjectsToAnalyze.forEach(subjectName => {
+      let totalOnePagers = 0;
+      let completedOnePagers = 0;
+      
+      Object.values(zh_dailyChecklist || {}).forEach(dayData => {
+        if (!dayData?.subjects) return;
+        const subjectObj = dayData.subjects[subjectName];
+        if (subjectObj) {
+          Object.values(subjectObj).forEach(topicState => {
+            totalOnePagers++;
+            if (topicState.onepager) {
+              completedOnePagers++;
+            }
+          });
+        }
+      });
+      
+      if (totalOnePagers >= 2) {
+        const rate = (completedOnePagers / totalOnePagers) * 100;
+        if (rate < 60) {
+          alerts.push({
+            subject: subjectName,
+            rate: Math.round(rate),
+            total: totalOnePagers
+          });
+        }
+      }
+    });
+    return alerts;
+  }, [zh_dailyChecklist]);
+
   return (
     <div className="page-inner fade-in" style={{ paddingBottom: 100 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
@@ -127,7 +246,7 @@ export default function Analytics() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className={`btn ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')} style={{ fontSize: 10 }}>PERFORMANCE</button>
           <button className={`btn ${activeTab === 'targets' ? 'active' : ''}`} onClick={() => setActiveTab('targets')} style={{ fontSize: 10 }}>TARGETS</button>
-          <button className={`btn ${activeTab === 'topics' ? 'active' : ''}`} onClick={() => setActiveTab('topics')} style={{ fontSize: 10 }}>TOPICS</button>
+          <button className={`btn ${activeTab === 'topics' ? 'active' : ''}`} onClick={() => setActiveTab('topics')} style={{ fontSize: 10 }}>PHASE PROGRESS</button>
         </div>
       </div>
 
@@ -276,54 +395,61 @@ export default function Analytics() {
       {activeTab === 'topics' && (
         <div className="fade-in">
           <div className="g2">
-            {/* Topic Accuracy */}
+            {/* Subject Phase-Progress Bars */}
             <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Topic Accuracy (Interpret + Act)</div>
+              <div className="label-caps" style={{ marginBottom: 20 }}>Subject Phase-Progress</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-                {topicAccuracy.map(item => (
-                  <div key={item.subject} className="card" style={{ padding: 15, background: 'var(--bg2)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11 }}>
-                      <span style={{ fontWeight: 700 }}>{item.subject}</span>
-                      <span style={{ color: item.avg >= 60 ? 'var(--green)' : 'var(--red)' }}>{item.avg}%</span>
+                {phaseProgressData.map(item => {
+                  const color = SUBJECT_COLORS[item.subject] || '#22c55e';
+                  return (
+                    <div key={item.subject} className="card" style={{ padding: 15, background: 'var(--bg2)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11 }}>
+                        <span style={{ fontWeight: 700 }}>{item.subject}</span>
+                        <span style={{ color: color }}>Phase {item.currentPhase} / {item.totalPhases}</span>
+                      </div>
+                      <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden', marginBottom: 5 }}>
+                        <div style={{ height: '100%', width: `${item.percent}%`, background: color }} />
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--text4)' }}>{item.percent}% Syllabus Complete</div>
                     </div>
-                    <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden', marginBottom: 10 }}>
-                      <div style={{ height: '100%', width: `${item.avg}%`, background: item.avg >= 60 ? 'var(--green)' : 'var(--red)' }} />
-                    </div>
-                    <p style={{ fontSize: 10, color: 'var(--text4)', marginBottom: 12 }}>
-                      Your {item.subject} accuracy is {item.avg}% over recent sessions.
-                    </p>
-                    {item.avg < 60 && (
-                      <button className="btn btn-r" style={{ width: '100%', fontSize: 9, padding: '8px' }}>
-                        START 3-DAY {item.subject.toUpperCase()} SPRINT
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            {/* Topic Coverage */}
+            {/* Per-Slot-Type Completion Rates */}
             <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Topic Coverage Heatmap</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-                {topicCoverage.map(item => (
-                  <div key={item.subject} style={{ 
-                    padding: 12, 
-                    borderRadius: 8, 
-                    background: item.diffDays > 7 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                    border: `1px solid ${item.diffDays > 7 ? 'var(--red)' : 'var(--green)'}`
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 800 }}>{item.subject}</div>
-                    <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 4 }}>
-                      {item.diffDays === 999 ? 'Never attempted' : `${item.diffDays} days ago`}
+              <div className="label-caps" style={{ marginBottom: 20 }}>Slot-Type Completion Rates</div>
+              <div style={{ height: 250 }}>
+                <ResponsiveContainer>
+                  <BarChart data={slotTypeCompletion}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 8, fill: 'var(--text3)' }} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text3)' }} />
+                    <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
+                    <Bar dataKey="rate" fill="var(--indigo)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              {/* Weak-subject alerts inside the same column */}
+              <div style={{ marginTop: 20 }}>
+                <div className="label-caps" style={{ marginBottom: 12, fontSize: 10, color: 'var(--text4)' }}>Tactical Syllabus Advisories</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {weakSubjectAlerts.map(alert => (
+                    <div key={alert.subject} className="card" style={{ borderLeft: '4px solid var(--red)', background: 'rgba(239,68,68,0.02)', padding: 12 }}>
+                      <div style={{ fontWeight: 'bold', color: 'var(--red)', fontSize: 11 }}>WEAK SUBJECT ALERT: {alert.subject.toUpperCase()}</div>
+                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4 }}>
+                        One-pager completion is at {alert.rate}% ({alert.total} checkpoints analyzed). Prioritize revision.
+                      </div>
                     </div>
-                    {item.diffDays > 7 && (
-                      <button className="btn" style={{ width: '100%', fontSize: 8, padding: '4px', marginTop: 8, background: 'var(--red)', color: 'white' }}>
-                        ADD TO TOMORROW
-                      </button>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                  {weakSubjectAlerts.length === 0 && (
+                    <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--text4)' }}>
+                      All subject check-off rates within acceptable tactical bounds.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

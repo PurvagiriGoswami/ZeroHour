@@ -1,11 +1,16 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { useAppStore } from '../store/useStore'
 import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { exportToExcel } from '../services/excelService'
+import { DEFAULT_CDS_TIMETABLE } from '../data'
+import { getTodayStr } from '../utils/tacticalEngine'
 
 export default function Settings() {
-  const { settings, syncStatus, zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks } = useAppStore(
+  const { 
+    settings, syncStatus, zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks,
+    zh_examList, setExamList, zh_weeklyTimetable, setWeeklyTimetable
+  } = useAppStore(
     useShallow(s => ({
       settings: s.settings,
       syncStatus: s.syncStatus,
@@ -13,6 +18,10 @@ export default function Settings() {
       zh_topicMap: s.zh_topicMap,
       zh_mocks: s.zh_mocks,
       zh_weeklyChecks: s.zh_weeklyChecks,
+      zh_examList: s.zh_examList,
+      setExamList: s.setExamList,
+      zh_weeklyTimetable: s.zh_weeklyTimetable,
+      setWeeklyTimetable: s.setWeeklyTimetable
     }))
   )
   const store = useAppStore()
@@ -87,11 +96,85 @@ export default function Settings() {
     toast('📁 JSON backup downloaded', 'ok')
   }
 
-  const handleExamDateChange = (key, val) => {
-    store.setSettings({
-      examDates: { ...settings.examDates, [key]: val }
-    })
-  }
+  const handleExamNameChange = (id, name) => {
+    const updated = zh_examList.map(e => e.id === id ? { ...e, name } : e);
+    setExamList(updated);
+  };
+
+  const handleExamDateChange = (id, date) => {
+    const updated = zh_examList.map(e => e.id === id ? { ...e, date } : e);
+    setExamList(updated);
+  };
+
+  const handleExamActiveChange = (id, active) => {
+    const updated = zh_examList.map(e => e.id === id ? { ...e, active } : e);
+    setExamList(updated);
+  };
+
+  const handleAddCustomExam = () => {
+    const newExam = {
+      id: `custom_${Date.now()}`,
+      name: 'Custom Exam',
+      date: '',
+      active: true,
+      isSystem: false
+    };
+    setExamList([...zh_examList, newExam]);
+  };
+
+  const handleRemoveCustomExam = (id) => {
+    const updated = zh_examList.filter(e => e.id !== id);
+    setExamList(updated);
+  };
+
+  const today = getTodayStr();
+  const sortedExamList = useMemo(() => {
+    const allExams = [...(zh_examList || [])];
+    const examsWithDates = allExams
+      .filter(e => e.date)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const examsWithoutDates = allExams.filter(e => !e.date);
+    return [...examsWithDates, ...examsWithoutDates];
+  }, [zh_examList]);
+
+  const handleTemplateChange = (e) => {
+    const value = e.target.value;
+    if (value === 'cds-prep-v1') {
+      if (window.confirm("Switch to standard CDS template? This will replace your current weekly schedule.")) {
+        setWeeklyTimetable({
+          ...zh_weeklyTimetable,
+          templateId: 'cds-prep-v1',
+          dailySlots: DEFAULT_CDS_TIMETABLE.dailySlots
+        });
+      }
+    } else if (value === 'capf-prep-v1') {
+      if (window.confirm("Switch to standard CAPF template? This will replace your current weekly schedule.")) {
+        const capfSlots = {};
+        const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        days.forEach(day => {
+          const base = zh_weeklyTimetable.dailySlots[day] || {};
+          capfSlots[day] = { ...base };
+          if (capfSlots[day].maths) {
+            capfSlots[day].maths = { ...capfSlots[day].maths, label: 'Maths PYQ (CDS/AFCAT/CAPF)' };
+          }
+          if (day === 'monday' || day === 'wednesday' || day === 'friday') {
+            capfSlots[day].capfPaper2 = {
+              duration: 90,
+              components: ['Comprehension', 'English', 'Logical/Analytical Reasoning', 'Numerical Ability']
+            };
+          }
+          if (day === 'tuesday' || day === 'thursday') {
+            capfSlots[day].englishPYQ = { duration: 45 };
+          }
+        });
+        setWeeklyTimetable({
+          ...zh_weeklyTimetable,
+          templateId: 'capf-prep-v1',
+          dailySlots: capfSlots
+        });
+      }
+    }
+  };
 
   const handleSubjectTargetChange = (sub, val) => {
     store.setSettings({
@@ -117,22 +200,90 @@ export default function Settings() {
         <p style={{ color: 'var(--text4)', fontSize: 12 }}>Configure your tactical environment.</p>
       </div>
 
-      {/* ── EXAM DATES ── */}
+      {/* ── EXAM TIMELINE MANAGER (DYNAMIC) ── */}
       <div className="card">
-        <div className="label-caps" style={{ marginBottom: 20 }}>EXAM DATES</div>
-        <div className="g2">
-          {Object.entries(settings.examDates || {}).map(([key, date]) => (
-            <div key={key}>
-              <label className="label-caps" style={{ display: 'block', marginBottom: 8 }}>{key.toUpperCase()}</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input 
-                  type="date" className="inp" style={{ flex: 1 }}
-                  value={date || ''} onChange={e => handleExamDateChange(key, e.target.value)} 
-                />
-                <button className="btn" style={{ padding: '0 10px' }} onClick={() => handleExamDateChange(key, '')}>×</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div className="label-caps">DYNAMIC EXAM TIMELINE MANAGER</div>
+          <button className="btn btn-g" style={{ padding: '4px 10px', fontSize: 10 }} onClick={handleAddCustomExam}>
+            ➕ ADD CUSTOM EXAM
+          </button>
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {sortedExamList.map(ex => (
+            <div key={ex.id} className="card" style={{ padding: 12, background: 'var(--bg3)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Active Toggle */}
+              <input 
+                type="checkbox" 
+                checked={ex.active} 
+                onChange={(e) => handleExamActiveChange(ex.id, e.target.checked)} 
+                style={{ cursor: 'pointer' }}
+              />
+              
+              {/* Exam Name Input */}
+              <div style={{ flex: 2, minWidth: 150 }}>
+                {ex.isSystem ? (
+                  <span style={{ fontWeight: 'bold', fontSize: 13, color: '#fff' }}>{ex.name} <span style={{ fontSize: 9, color: 'var(--text4)' }}>(SYSTEM)</span></span>
+                ) : (
+                  <input 
+                    type="text" 
+                    className="inp" 
+                    style={{ fontSize: 12, padding: '4px 8px' }} 
+                    value={ex.name} 
+                    onChange={(e) => handleExamNameChange(ex.id, e.target.value)} 
+                  />
+                )}
               </div>
+
+              {/* Exam Date Input */}
+              <div style={{ flex: 2, minWidth: 120 }}>
+                <input 
+                  type="date" 
+                  className="inp" 
+                  style={{ fontSize: 12, padding: '4px 8px' }} 
+                  value={ex.date || ''} 
+                  onChange={(e) => handleExamDateChange(ex.id, e.target.value)} 
+                />
+              </div>
+
+              {/* Days Remaining Label */}
+              {ex.date && (
+                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text3)' }}>
+                  {Math.max(0, Math.ceil((new Date(ex.date) - new Date(today)) / (1000 * 60 * 60 * 24)))}d left
+                </div>
+              )}
+
+              {/* Remove Button for Custom Exams */}
+              {!ex.isSystem && (
+                <button 
+                  className="btn btn-red" 
+                  style={{ padding: '4px 8px', fontSize: 10 }}
+                  onClick={() => handleRemoveCustomExam(ex.id)}
+                >
+                  🗑 Remove
+                </button>
+              )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── TIMETABLE TEMPLATE SELECTOR ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 15 }}>WEEKLY TIMETABLE TEMPLATE</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <select 
+            className="inp"
+            value={zh_weeklyTimetable?.templateId || 'cds-prep-v1'}
+            onChange={handleTemplateChange}
+            style={{ width: '100%', maxWidth: 350 }}
+          >
+            <option value="cds-prep-v1">CDS Prep Template v1</option>
+            <option value="capf-prep-v1">CAPF Prep Template v1</option>
+          </select>
+          <span style={{ fontSize: 10, color: 'var(--text4)' }}>
+            Note: Switching templates re-maps daily core slots, revisions, and exam-specific checkpoints.
+          </span>
         </div>
       </div>
 

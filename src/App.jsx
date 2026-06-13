@@ -7,14 +7,14 @@ import Skeleton from './components/Skeleton'
 import ErrorBoundary from './components/ErrorBoundary'
 import Onboarding from './pages/Onboarding'
 import Login from './pages/Login'
+import { getAutoProgressionUpdate } from './utils/tacticalEngine'
 
 // Lazy loaded pages (New Unified System)
 const HQDashboard = lazy(() => import('./pages/HQDashboard'));
-const SessionLog = lazy(() => import('./pages/SessionLog'));
-const Pomodoro = lazy(() => import('./pages/Pomodoro'));
+const SessionLogger = lazy(() => import('./pages/SessionLogger'));
 const RevisionQueue = lazy(() => import('./pages/RevisionQueue'));
 const MockTestLog = lazy(() => import('./pages/MockTestLog'));
-const TopicMap = lazy(() => import('./pages/TopicMap'));
+const SyllabusSetup = lazy(() => import('./pages/SyllabusSetup'));
 const WeeklySitrep = lazy(() => import('./pages/WeeklySitrep'));
 const Analytics = lazy(() => import('./pages/Analytics'));
 const DailyTargets = lazy(() => import('./pages/DailyTargets'));
@@ -24,24 +24,24 @@ const Profile = lazy(() => import('./pages/Profile'));
 const WeeklyPlanner = lazy(() => import('./pages/WeeklyPlanner'));
 
 const PAGES = {
-  hq:        HQDashboard,
-  log:       SessionLog,
-  pomo:      Pomodoro,
-  queue:     RevisionQueue,
-  mocks_new: MockTestLog,
-  topics:    TopicMap,
-  sitrep:    WeeklySitrep,
-  analytics: Analytics,
-  targets:   DailyTargets,
-  features:  Features,
-  settings:  Settings,
-  profile:   Profile,
-  weekly_planner: WeeklyPlanner,
+  hq:             HQDashboard,
+  log:            SessionLogger,
+  session_logger: SessionLogger,
+  queue:          RevisionQueue,
+  mocks_new:      MockTestLog,
+  sitrep:         WeeklySitrep,
+  analytics:      Analytics,
+  targets:        DailyTargets,
+  features:       Features,
+  settings:       Settings,
+  profile:        Profile,
+  planner:        WeeklyPlanner,
+  syllabus_setup: SyllabusSetup,
 }
 
 const map = {
-  '1': 'hq', '2': 'log', '3': 'pomo', '4': 'queue', '5': 'mocks_new',
-  '6': 'topics', '7': 'sitrep', '8': 'analytics', '9': 'targets', '0': 'profile'
+  '1': 'hq', '2': 'log', '3': 'session_logger', '4': 'queue', '5': 'mocks_new',
+  '6': 'planner', '7': 'sitrep', '8': 'analytics', '9': 'targets', '0': 'profile'
 }
 
 export default function App() {
@@ -49,6 +49,8 @@ export default function App() {
   const initFirebase = useAppStore(s => s.initFirebase)
   const syncStatus = useAppStore(s => s.syncStatus)
   const hasHydrated = useAppStore(s => s.hasHydrated)
+  const zh_weeklyTimetable = useAppStore(s => s.zh_weeklyTimetable)
+  const setWeeklyTimetable = useAppStore(s => s.setWeeklyTimetable)
   
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -90,6 +92,18 @@ export default function App() {
         setIsInitialLoad(false) // Still allow app to load
       })
   }, [initFirebase])
+
+  // Monday Auto-rotation Progression
+  useEffect(() => {
+    if (hasHydrated && zh_weeklyTimetable) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const updated = getAutoProgressionUpdate(zh_weeklyTimetable, todayStr);
+      if (updated) {
+        setWeeklyTimetable(updated);
+        console.log("Monday Auto-Progression secured: rotated active syllabus phases.");
+      }
+    }
+  }, [hasHydrated, zh_weeklyTimetable, setWeeklyTimetable])
 
   // Keyboard Shortcuts
   useEffect(() => {

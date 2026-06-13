@@ -1,8 +1,8 @@
 export const EXAMS = [
-  { i:'c1', l:'⚡ CDS I',    d:'2026-04-12', c:'#ffd700' },
-  { i:'af', l:'✈ AFCAT',    d:null,          c:'#00d4ff' },
-  { i:'c2', l:'🟢 CDS II',  d:'2026-09-13', c:'#39ff14' },
-  { i:'c3', l:'🟣 CDS 2027',d:'2027-04-11', c:'#bf80ff' },
+  { i: 'c1', l: '⚡ CDS I', d: '2026-04-12', c: '#ffd700' },
+  { i: 'af', l: '✈ AFCAT', d: null, c: '#00d4ff' },
+  { i: 'c2', l: '🟢 CDS II', d: '2026-09-13', c: '#39ff14' },
+  { i: 'c3', l: '🟣 CDS 2027', d: '2027-04-11', c: '#bf80ff' },
 ]
 
 export const CDS_PAPER = {
@@ -616,21 +616,20 @@ export const MASTER_TOPICS = {
 }
 
 export const TABS = [
-  { id:'hq',       label:'HQ Dashboard', icon:'🏰',  short:'HQ' },
-  { id:'log',      label:'Session Log',  icon:'📝',  short:'LOG' },
-  { id:'pomo',     label:'Pomodoro',     icon:'🍅',  short:'POM' },
-  { id:'queue',    label:'Revision Q',   icon:'🔄',  short:'QUE' },
-  { id:'mocks_new',label:'Mock Tests',   icon:'🎯',  short:'MCK' },
-  { id:'topics',   label:'Topic Map',    icon:'🗺',  short:'MAP' },
-  { id:'sitrep',   label:'Weekly SITREP',icon:'📡',  short:'REP' },
-  { id:'analytics',label:'Performance',   icon:'📈',  short:'ANL' },
-  { id:'targets',  label:'Daily Targets', icon:'🎯',  short:'TGT' },
-  { id:'features', label:'Tactical Tools',icon:'🛠',  short:'TLS' },
-  { id:'profile',  label:'Profile',       icon:'👤',  short:'PRO' },
-  { id:'settings', label:'Settings',      icon:'⚙',   short:'SET' },
+  { id: 'hq', label: 'HQ Dashboard', icon: '🏰', short: 'HQ' },
+  { id: 'planner', label: 'Weekly Planner', icon: '📅', short: 'PLN' },
+  { id: 'targets', label: 'Daily Targets', icon: '🎯', short: 'TGT' },
+  { id: 'session_logger', label: 'Session Logger', icon: '📋', short: 'SES' },
+  { id: 'queue', label: 'Revision Q', icon: '🔄', short: 'QUE' },
+  { id: 'mocks_new', label: 'Mock Tests', icon: '🎯', short: 'MCK' },
+  { id: 'sitrep', label: 'Weekly SITREP', icon: '📡', short: 'REP' },
+  { id: 'analytics', label: 'Performance', icon: '📈', short: 'ANL' },
+  { id: 'features', label: 'Study Tools', icon: '🛠', short: 'TLS' },
+  { id: 'profile', label: 'Profile', icon: '👤', short: 'PRO' },
+  { id: 'settings', label: 'Settings', icon: '⚙', short: 'SET' },
 ]
 
-export const MOB_TAB_ORDER = ['hq','log','pomo','queue','mocks_new','topics','sitrep','analytics','targets','features','profile','settings']
+export const MOB_TAB_ORDER = ['hq', 'planner', 'targets', 'session_logger', 'queue', 'mocks_new', 'sitrep', 'analytics', 'features', 'profile', 'settings']
 
 export const RANKS = [
   { level: 0, title: 'Recruit', minXP: 0, icon: '🔰' },
@@ -640,14 +639,15 @@ export const RANKS = [
   { level: 4, title: 'Commissioned Officer', minXP: 4000, icon: '⭐' },
 ]
 
+// Legacy — kept for backward compat with any remaining references
 export const WEEKLY_ROTATION = {
-  1: { block1: 'Mathematics', block2: 'English' }, // Mon
-  2: { block1: 'GS — History', block2: 'GS — Physics' }, // Tue
-  3: { block1: 'Mathematics', block2: 'GS — Geography' }, // Wed
-  4: { block1: 'English', block2: 'GS — Chemistry' }, // Thu
-  5: { block1: 'Mathematics', block2: 'GS — Biology' }, // Fri
-  6: { block1: 'AFCAT — Reasoning', block2: 'GS — Indian Polity' }, // Sat
-  0: { block1: 'Revision', block2: 'Mock Test' }, // Sun
+  1: { block1: 'Mathematics', block2: 'English' },
+  2: { block1: 'GS — History', block2: 'GS — Physics' },
+  3: { block1: 'Mathematics', block2: 'GS — Geography' },
+  4: { block1: 'English', block2: 'GS — Chemistry' },
+  5: { block1: 'Mathematics', block2: 'GS — Biology' },
+  6: { block1: 'AFCAT — Reasoning', block2: 'GS — Indian Polity' },
+  0: { block1: 'Revision', block2: 'Mock Test' },
 }
 
 export const XP_VALUES = {
@@ -656,7 +656,7 @@ export const XP_VALUES = {
   ERROR_LOGGED: 5,
   STREAK_MAINTAINED: 15,
   DOUBT_RESOLVED: 10,
-  POMO_COMPLETE: 8,
+  SESSION_LOGGED: 8,
   WEEKLY_REVIEW: 30
 }
 
@@ -665,7 +665,7 @@ export const MILESTONES = [
   { id: '10_sessions', label: 'Dedicated', desc: '10 study sessions completed', icon: '📚' },
   { id: '30_streak', label: 'Unstoppable', desc: '30-day study streak', icon: '🔥' },
   { id: '50_errors', label: 'Self-Correcting', desc: '50 errors resolved', icon: '🛠' },
-  { id: '100_pomos', label: 'Focus Master', desc: '100 pomodoros completed', icon: '🍅' },
+  { id: '100_sessions', label: 'Focus Master', desc: '100 sessions logged', icon: '💪' },
   { id: 'first_weekly', label: 'Strategist', desc: 'First weekly review done', icon: '📋' },
 ]
 
@@ -674,3 +674,214 @@ export const RADAR_SUBJECTS = [
 ]
 
 export const td = () => new Date().toISOString().split('T')[0]
+
+// ══════════════════════════════════════════
+// SUBJECT COLORS — deterministic color map for all subjects
+// Used across Weekly Planner, phase-progress bars, analytics
+// ══════════════════════════════════════════
+export const SUBJECT_COLORS = {
+  'Mathematics':              '#3b82f6',
+  'English':                  '#8b5cf6',
+  'GS — History':             '#f59e0b',
+  'GS — Geography':           '#22c55e',
+  'GS — Indian Polity':       '#ef4444',
+  'GS — Economics':            '#06b6d4',
+  'GS — Physics':             '#f97316',
+  'GS — Chemistry':           '#ec4899',
+  'GS — Biology':             '#10b981',
+  'GS — Current Affairs & Static GK': '#fbbf24',
+  'AFCAT — Reasoning':        '#a78bfa',
+  'Physics':                  '#f97316',
+  'Chemistry':                '#ec4899',
+  'Biology':                  '#10b981',
+  'Polity':                   '#ef4444',
+  'Geography':                '#22c55e',
+  'Economics':                '#06b6d4',
+  'History-Ancient':          '#d97706',
+  'History-Medieval':         '#b45309',
+  'History-Modern':           '#92400e',
+  'Maths':                    '#3b82f6',
+}
+
+// ══════════════════════════════════════════
+// DEFAULT EXAM LIST — config-driven multi-exam countdown
+// ══════════════════════════════════════════
+export const DEFAULT_EXAM_LIST = [
+  { id: 'cds2', name: 'CDS-II', date: '2026-09-13', active: true, isSystem: true },
+  { id: 'afcat', name: 'AFCAT', date: '', active: true, isSystem: false },
+  { id: 'capf', name: 'CAPF', date: '', active: true, isSystem: false },
+  { id: 'cds2027', name: 'CDS 2027', date: '2027-04-11', active: true, isSystem: true },
+]
+
+// ══════════════════════════════════════════
+// DEFAULT CDS TIMETABLE — dailySlots structure
+// ══════════════════════════════════════════
+export const DEFAULT_CDS_TIMETABLE = {
+  templateId: 'cds-prep-v1',
+  cycleStartDate: '2026-06-15',
+  cycleLengthWeeks: null,
+  dailySlots: {
+    monday: {
+      maths: { duration: 180, topic: null, fixed: true },
+      english: { duration: 60, topics: ['Grammar — Tenses, Articles, Prepositions'], fixed: true },
+      subjects: [
+        { name: 'Physics', phase: 1, topics: ['Units & measurements', 'Laws of motion', 'Work-energy-power'], activity: 'understand-recall-onepager' },
+        { name: 'Polity', phase: 1, topics: ['Preamble & salient features', 'Fundamental Rights (Art 12-35)', 'DPSP & Fundamental Duties'], activity: 'understand-recall-onepager' },
+        { name: 'History-Ancient', phase: 1, topics: ['Indus Valley Civilization', 'Vedic Age', 'Mahajanapadas & rise of Buddhism/Jainism'], activity: 'understand-recall-onepager' },
+      ]
+    },
+    tuesday: {
+      maths: { duration: 180, topic: null, fixed: true },
+      english: { duration: 60, topics: ['Vocabulary — Synonyms, Antonyms'], fixed: true },
+      subjects: [
+        { name: 'Chemistry', phase: 1, topics: ['Periodic Table', 'Acids, Bases & Salts', 'Chemical Reactions'], activity: 'understand-recall-onepager' },
+        { name: 'Geography', phase: 1, topics: ['Latitude, Longitude & IDL', 'Atmosphere layers, winds', 'Climate Zones & Biomes'], activity: 'understand-recall-onepager' },
+        { name: 'History-Medieval', phase: 1, topics: ['Delhi Sultanate', 'Mughal Empire', 'Bhakti & Sufi Movement'], activity: 'understand-recall-onepager' },
+      ]
+    },
+    wednesday: {
+      maths: { duration: 180, topic: null, fixed: true },
+      english: { duration: 60, topics: ['Reading Comprehension'], fixed: true },
+      subjects: [
+        { name: 'Physics', phase: 1, topics: ['Reflection & Refraction', 'Human Eye & Optical Instruments', 'Heat Transfer'], activity: 'understand-recall-onepager' },
+        { name: 'Polity', phase: 1, topics: ['President — Election, Powers', 'Parliament — LS & RS', 'Emergency Provisions'], activity: 'understand-recall-onepager' },
+        { name: 'History-Modern', phase: 1, topics: ["Gandhi's Movements", '1857 Revolt', 'Partition & Independence'], activity: 'understand-recall-onepager' },
+      ]
+    },
+    thursday: {
+      maths: { duration: 180, topic: null, fixed: true },
+      english: { duration: 60, topics: ['Error Spotting'], fixed: true },
+      subjects: [
+        { name: 'Biology', phase: 1, topics: ['Circulatory System', 'Vitamins & Minerals', 'Communicable Diseases'], activity: 'understand-recall-onepager' },
+        { name: 'Geography', phase: 1, topics: ['Physiographic Divisions of India', 'Major Rivers', 'Soils of India'], activity: 'understand-recall-onepager' },
+        { name: 'History-Ancient', phase: 1, topics: ['Mauryan Empire', 'Gupta Empire', 'Sangam Age'], activity: 'understand-recall-onepager' },
+      ]
+    },
+    friday: {
+      maths: { duration: 180, topic: null, fixed: true },
+      english: { duration: 60, topics: ['Sentence Completion'], fixed: true },
+      subjects: [
+        { name: 'Chemistry', phase: 1, topics: ['Metals & Non-Metals', 'Important Alloys', 'Common Organic Compounds'], activity: 'understand-recall-onepager' },
+        { name: 'Polity', phase: 1, topics: ['Supreme Court', 'Writs', 'Election Commission'], activity: 'understand-recall-onepager' },
+        { name: 'History-Medieval', phase: 1, topics: ['Maratha Empire', 'Vijayanagara & Bahmani', 'Cultural developments'], activity: 'understand-recall-onepager' },
+      ]
+    },
+    saturday: {
+      maths: { duration: 180, fixed: true },
+      english: { duration: 60, fixed: true },
+      subjects: [
+        { name: 'History-Modern', phase: 1, topics: ['Indian National Congress', 'British East India Company', 'Revolutionary Movements'], activity: 'understand-recall-onepager' },
+        { name: 'Biology', phase: 1, topics: ['Cell Structure', 'DNA & RNA basics', 'Genetics — Mendel'], activity: 'understand-recall-onepager' },
+      ],
+      revision: { scope: 'week', duration: 150 },
+      pyq: { duration: 90 },
+      currentAffairs: { type: 'monthly-oneshot', source: 'youtube', range: 'jan-aug-2026', months: { jan: false, feb: false, mar: false, apr: false, may: false, jun: false, jul: false, aug: false } }
+    },
+    sunday: {
+      maths: { duration: 180, fixed: true },
+      english: { duration: 60, fixed: true, label: 'revision' },
+      mock: { type: 'full-mock', timed: true },
+      currentAffairs: { type: 'monthly-oneshot', source: 'youtube', conditional: 'if-not-done-saturday' }
+    }
+  },
+  subjectRotationTracker: {
+    'Physics': 1, 'Chemistry': 1, 'Biology': 1, 'Polity': 1, 'Geography': 1,
+    'History-Ancient': 1, 'History-Medieval': 1, 'History-Modern': 1, 'English': 1
+  },
+}
+
+// ══════════════════════════════════════════
+// DEFAULT CDS SYLLABUS — ordered topic lists per subject, chunked in phases of 3
+// Auto-progression pulls next chunk each week
+// ══════════════════════════════════════════
+export const DEFAULT_CDS_SYLLABUS = {
+  'Physics': [
+    ['Units & measurements', 'Laws of motion', 'Work-energy-power'],
+    ['Heat Transfer', 'Reflection & Refraction', 'Human Eye & Optical Instruments'],
+    ['Lenses & Mirrors', 'Dispersion of Light', 'Waves & Sound'],
+    ['Gravitation & Satellites', 'Simple Harmonic Motion', "Ohm's Law & Circuits"],
+    ['Magnetic Effects of Current', 'Electromagnetic Induction', 'Nuclear Physics'],
+    ['Space Science & ISRO', 'Photoelectric Effect', 'Modern Physics review'],
+  ],
+  'Chemistry': [
+    ['Periodic Table', 'Acids, Bases & Salts', 'Chemical Reactions'],
+    ['Chemical Bonding', 'Oxidation & Reduction', 'Metals & Non-Metals'],
+    ['Important Alloys', 'Common Organic Compounds', 'Chemicals in Daily Life'],
+    ['Environmental Chemistry', 'States of Matter', 'Solutions & Solubility'],
+    ['Electrochemistry basics', 'Polymers review', 'Applied Chemistry review'],
+  ],
+  'Biology': [
+    ['Circulatory System', 'Vitamins & Minerals', 'Communicable Diseases'],
+    ['Digestive System', 'Respiratory System', 'Nervous System & Brain'],
+    ['Excretory System', 'Endocrine System', 'Cell Structure'],
+    ['DNA, RNA & Protein Synthesis', 'Genetics — Mendel', 'Cell Division'],
+    ['Environmental Pollution', 'Climate Change & Global Warming', 'Ecosystem'],
+    ['Biodiversity & Conservation', 'Wildlife Protection', 'Photosynthesis & Plant Biology'],
+  ],
+  'Polity': [
+    ['Preamble & salient features', 'Fundamental Rights (Art 12-35)', 'DPSP & Fundamental Duties'],
+    ['President — Election, Powers', 'Parliament — LS & RS', 'Emergency Provisions'],
+    ['Supreme Court', 'Writs', 'Election Commission'],
+    ['PM & Council of Ministers', 'Vice-President & RS', 'Bills — Ordinary, Money, CA'],
+    ['CAG, Attorney General', 'High Courts', 'Judicial Review & PIL'],
+    ['Panchayati Raj', 'Urban Local Bodies', 'Governor — Powers'],
+    ['State Legislature', 'Centre-State Relations', 'UPSC & State PSC'],
+  ],
+  'Geography': [
+    ['Latitude, Longitude & IDL', 'Atmosphere layers, winds', 'Climate Zones & Biomes'],
+    ['Physiographic Divisions of India', 'Major Rivers', 'Soils of India'],
+    ['Earth — Rotation, Revolution', 'Landforms', 'Oceans, Seas, Straits'],
+    ['Earthquakes & Volcanoes', 'Rocks & Minerals', 'Himalayan System'],
+    ['Natural Vegetation & Forests', 'Drainage Basins', 'Coastal Features'],
+    ['Indian Agriculture', 'Minerals & Industries', 'Transport — Railways, Roads, Ports'],
+    ['Census & Population', 'World Economic Geography', 'Geography consolidation'],
+  ],
+  'History-Ancient': [
+    ['Indus Valley Civilization', 'Vedic Age', 'Mahajanapadas & Buddhism/Jainism'],
+    ['Mauryan Empire (Ashoka, Chandragupta)', 'Gupta Empire — Golden Age', 'Sangam Age'],
+    ['Ancient India consolidation', 'Art & Architecture of Ancient India', 'Ancient India review'],
+  ],
+  'History-Medieval': [
+    ['Delhi Sultanate', 'Mughal Empire (Akbar to Aurangzeb)', 'Bhakti & Sufi Movement'],
+    ['Maratha Empire', 'Vijayanagara & Bahmani Kingdoms', 'Cultural developments'],
+    ['Medieval India consolidation', 'Medieval trade & economy', 'Medieval India review'],
+  ],
+  'History-Modern': [
+    ["Gandhi's Movements (NCM, CDM, Quit India)", '1857 Revolt', 'Partition & Independence 1947'],
+    ['Indian National Congress & Freedom Struggle', 'British East India Company', 'Revolutionary Movements'],
+    ['Socio-Religious Reform Movements', 'Governors-General & Viceroys', 'Important Acts & Constitutional Milestones'],
+    ['World War I', 'World War II', 'French Revolution'],
+    ['Industrial Revolution', 'Cold War & Decolonisation', 'Modern History review'],
+  ],
+  'Economics': [
+    ['GDP, inflation, types of economy', 'Banking — RBI, Monetary Policy', 'Inflation — Types, WPI, CPI'],
+    ['Union Budget — Fiscal Deficit', 'Taxes — Direct, Indirect & GST', 'Five-Year Plans & NITI Aayog'],
+    ['Agriculture & Green Revolution', 'Poverty & Unemployment', 'Flagship Govt Schemes'],
+    ['Demand, Supply & Market Equilibrium', 'National Income — GDP, GNP', 'Types of Economies'],
+    ['WTO', 'IMF & World Bank', 'Balance of Payments & Forex'],
+  ],
+}
+
+// ══════════════════════════════════════════
+// CAPF EXTRA TOPICS & TEMPLATE OVERRIDES
+// ══════════════════════════════════════════
+export const CAPF_EXTRA_TOPICS = [
+  { id: 'internal_security', name: 'Internal Security', done: false },
+  { id: 'police_acts', name: 'Police Acts / NIA / UAPA / AFSPA', done: false },
+  { id: 'disaster_mgmt', name: 'Disaster Management', done: false },
+  { id: 'human_rights', name: 'Human Rights / NHRC', done: false },
+  { id: 'essay_writing', name: 'Essay Writing', done: false },
+  { id: 'pet_pst', name: 'PET / PST Tracker', done: false },
+]
+
+export const CAPF_TEMPLATE_OVERRIDES = {
+  capfPaper2: { duration: 90, components: ['Comprehension', 'English', 'Logical/Analytical Reasoning', 'Numerical Ability'] },
+  englishPYQ: { duration: 45, conditional: 'if-english-syllabus-complete' },
+  mathsRelabel: 'Maths PYQ (CDS/AFCAT/CAPF)',
+}
+
+// ══════════════════════════════════════════
+// DAY HELPERS
+// ══════════════════════════════════════════
+export const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+export const getDayName = (date = new Date()) => DAY_NAMES[date.getDay()]

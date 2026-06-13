@@ -11,11 +11,9 @@ export const getTodayStr = () => new Date().toISOString().split('T')[0];
  * Used for CDS I (April) and CDS II (September).
  */
 export const getSecondSunday = (month, year) => {
-  // month is 1-indexed (4 for April, 9 for September)
   const date = new Date(year, month - 1, 1);
   let day = date.getDay(); // 0 (Sun) to 6 (Sat)
   
-  // Find first Sunday
   let firstSunday;
   if (day === 0) {
     firstSunday = 1;
@@ -38,14 +36,12 @@ export const getSystemExams = (currentDate = new Date()) => {
   
   const exams = [];
   
-  // CDS I
   if (currentDate <= cds1ThisYear) {
     exams.push({ name: 'CDS I', date: cds1ThisYear, year: currentYear });
   } else {
     exams.push({ name: 'CDS I', date: getSecondSunday(4, currentYear + 1), year: currentYear + 1 });
   }
   
-  // CDS II
   if (currentDate <= cds2ThisYear) {
     exams.push({ name: 'CDS II', date: cds2ThisYear, year: currentYear });
   } else {
@@ -62,36 +58,25 @@ export const getSystemExams = (currentDate = new Date()) => {
   }));
 };
 
+/**
+ * Get prep progress percentages relative to start date and current date
+ */
 export const getPrepProgress = (activeExams = []) => {
   const start = new Date(START_DATE);
   const now = new Date();
   
-  // Default fallback if no exams provided (keeping legacy behavior for safety)
-  const afcatDate = new Date('2026-08-08');
-  const cdsDate = new Date('2026-09-13');
-
-  const totalAfcat = afcatDate - start;
-  const totalCds = cdsDate - start;
-
-  const consumedAfcat = now - start;
-  const consumedCds = now - start;
-
-  // Find nearest exam from activeExams if available
+  // Sort active exams with a date
   const sortedExams = [...activeExams]
-    .filter(e => new Date(e.exam_date) >= now)
-    .sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
+    .filter(e => e.date && e.active)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
     
   const nearest = sortedExams[0];
   let nearestDays = null;
   if (nearest) {
-    nearestDays = Math.ceil((new Date(nearest.exam_date) - now) / (1000 * 60 * 60 * 24));
+    nearestDays = Math.ceil((new Date(nearest.date) - now) / (1000 * 60 * 60 * 24));
   }
 
   return {
-    afcat: Math.min(100, Math.max(0, (consumedAfcat / totalAfcat) * 100)),
-    cds: Math.min(100, Math.max(0, (consumedCds / totalCds) * 100)),
-    daysAfcat: Math.ceil((afcatDate - now) / (1000 * 60 * 60 * 24)),
-    daysCds: Math.ceil((cdsDate - now) / (1000 * 60 * 60 * 24)),
     nearestExam: nearest ? { ...nearest, daysRemaining: nearestDays } : null
   };
 };
@@ -103,12 +88,26 @@ export const getWeekNumber = (date = new Date()) => {
   return Math.ceil(diff / (1000 * 60 * 60 * 24 * 7));
 };
 
-export const getPhase = (date = new Date()) => {
-  const afcatDate = new Date('2026-08-08');
-  const now = new Date(date);
-  return now > afcatDate
-    ? { id: 'CDS', name: 'CDS MODE ACTIVE', desc: 'Post-AFCAT Specialization' }
-    : { id: 'AFCAT', name: 'AFCAT + CDS BALANCED', desc: 'Pre-AFCAT Phase' };
+/**
+ * Derives current phase based on the nearest active exam
+ */
+export const getPhase = (examList = [], date = new Date()) => {
+  const activeExams = (examList || [])
+    .filter(e => e.active && e.date && new Date(e.date) >= date)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const nearest = activeExams[0];
+  if (!nearest) {
+    return { id: 'CDS', name: 'CDS MODE ACTIVE', desc: 'Post-AFCAT Specialization' };
+  }
+  
+  if (nearest.id === 'afcat') {
+    return { id: 'AFCAT', name: 'AFCAT + CDS BALANCED', desc: 'Pre-AFCAT Balanced Operations' };
+  } else if (nearest.id === 'cds2' || nearest.id === 'cds1') {
+    return { id: 'CDS', name: 'CDS SPECIALIZATION ACTIVE', desc: 'Focused CDS Operational Campaign' };
+  } else if (nearest.id === 'capf') {
+    return { id: 'CAPF', name: 'CAPF SPECIALIZATION ACTIVE', desc: 'Strategic CAPF Paper 1 & 2 Focus' };
+  }
+  return { id: nearest.id.toUpperCase(), name: `${nearest.name} PREP MODE`, desc: `Campaign focused on ${nearest.name}` };
 };
 
 // ── XP & Rank Logic ──
@@ -196,9 +195,9 @@ export const isMathProtectionActive = (mathScore) => mathScore > 0 && mathScore 
 export const getCommandDecisions = (avg, scores) => {
   const rules = [];
   const a = parseFloat(avg);
-  if (a > 0 && a < 3) rules.push("Reduce AFCAT by 2h this week. Reallocate to lowest CDS subject.");
-  if (isMathProtectionActive(scores.math)) rules.push("Invoke math recovery: 6h Math daily for this week.");
-  if (a >= 4) rules.push("Strong week. Optional: add 30 min to weak area or take half-day rest.");
+  if (a > 0 && a < 3) rules.push("Reduce daily workload by 2h this week. Reallocate to weak GS sections.");
+  if (isMathProtectionActive(scores.math)) rules.push("Invoke math recovery: 3h Math daily core slots this week.");
+  if (a >= 4) rules.push("Strong week. Maintain consistency or rest on Sunday mock conclusion.");
   return rules;
 };
 
@@ -206,7 +205,6 @@ export const getCommandDecisions = (avg, scores) => {
 export const getWeaknessProfile = (sessions, mocks) => {
   const subjectScores = {};
 
-  // Aggregate from sessions
   sessions.forEach(s => {
     if (s.score) {
       if (!subjectScores[s.subject]) subjectScores[s.subject] = [];
@@ -214,7 +212,6 @@ export const getWeaknessProfile = (sessions, mocks) => {
     }
   });
 
-  // Aggregate from mocks
   mocks.forEach(m => {
     if (m.math) { if (!subjectScores['Mathematics']) subjectScores['Mathematics'] = []; subjectScores['Mathematics'].push(m.math); }
     if (m.english) { if (!subjectScores['English']) subjectScores['English'] = []; subjectScores['English'].push(m.english); }
@@ -230,48 +227,7 @@ export const getWeaknessProfile = (sessions, mocks) => {
   return profile.filter(p => p.avg < 60).slice(0, 3);
 };
 
-// ── Daily Mission Logic ──
-export const getDailyMissions = (sessions, pomosToday, topicMap) => {
-  const today = getTodayStr();
-  const missions = [
-    { 
-      id: 'pomo', 
-      label: 'Operational Readiness', 
-      desc: 'Complete 4 Pomodoros today', 
-      target: 4, 
-      current: pomosToday,
-      done: pomosToday >= 4 
-    },
-    { 
-      id: 'sr', 
-      label: 'Intel Recovery', 
-      desc: 'Clear 1 overdue revision', 
-      target: 1, 
-      current: 0, // Calculated below
-      done: false 
-    },
-    { 
-      id: 'log', 
-      label: 'Combat Training', 
-      desc: 'Log 2 study missions', 
-      target: 2, 
-      current: sessions.filter(s => s.date === today).length,
-      done: sessions.filter(s => s.date === today).length >= 2
-    }
-  ];
-
-  // Calculate SR progress
-  let srDoneToday = 0;
-  sessions.filter(s => s.date === today && (s.phase === 'Spaced Revision' || s.phase === 'Active Recall')).forEach(s => {
-    srDoneToday++;
-  });
-  missions[1].current = srDoneToday;
-  missions[1].done = srDoneToday >= 1;
-
-  return missions;
-};
-
-// ── Daily Targets Logic ──
+// ── Rollover Targets Logic ──
 export const getRolloverTargets = (targets, yesterdayStr) => {
   return targets
     .filter(t => t.date === yesterdayStr && (t.status === 'pending' || t.status === 'incomplete' || t.status === 'partial'))
@@ -320,26 +276,82 @@ export const calculateDailySummary = (dateStr, targets) => {
   };
 };
 
-export const getAdaptiveSuggestions = (sessions, targets, summaries, topicMap) => {
-  // Simple version: suggest topics based on syllabus gaps and weak areas
-  const suggestions = [];
-  const today = getTodayStr();
+/**
+ * Monday Auto-Rotation Progression Logic
+ */
+export const getAutoProgressionUpdate = (timetable, todayStr = getTodayStr()) => {
+  if (!timetable || !timetable.dailySlots || !timetable.subjectRotationTracker || !timetable.subjectSyllabus) {
+    return null;
+  }
+
+  // Check if today is Monday
+  const todayDate = new Date(todayStr);
+  if (todayDate.getDay() !== 1) { // 1 = Monday
+    return null;
+  }
+
+  // Check if we already rotated this week
+  if (timetable.lastAutoRotationDate === todayStr) {
+    return null;
+  }
+
+  const updatedTracker = { ...timetable.subjectRotationTracker };
+  const updatedSlots = JSON.parse(JSON.stringify(timetable.dailySlots));
+  let hasChanges = false;
+
+  const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+  const activeSubjects = new Set();
   
-  // 1. Weak subjects from sessions/mocks
-  const weakProfile = getWeaknessProfile(sessions, []);
-  weakProfile.forEach(p => {
-    suggestions.push({
-      title: `${p.subject} Recovery`,
-      type: 'Practice',
-      priority: 'High',
-      estimated_minutes: 60,
-      exam: 'All'
-    });
+  weekdays.forEach(day => {
+    const slots = updatedSlots[day];
+    if (slots && slots.subjects) {
+      slots.subjects.forEach((sub, slotIdx) => {
+        const override = timetable.overrides?.[day]?.[slotIdx];
+        const finalSubName = override || sub.name;
+        activeSubjects.add(finalSubName);
+      });
+    }
   });
 
-  // 2. Syllabus gaps (untouched topics)
-  // ... can be added later
+  activeSubjects.forEach(subjectName => {
+    const currentPhase = updatedTracker[subjectName] || 1;
+    const syllabus = timetable.subjectSyllabus[subjectName] || [];
+    const totalPhases = syllabus.length;
+    
+    if (currentPhase < totalPhases) {
+      updatedTracker[subjectName] = currentPhase + 1;
+      hasChanges = true;
+    } else {
+      console.warn(`Syllabus for ${subjectName} is fully completed (last phase reached).`);
+    }
+  });
 
-  return suggestions.slice(0, 3);
+  if (!hasChanges) {
+    return null;
+  }
+
+  // Update syllabus topics in dailySlots dynamically
+  weekdays.forEach(day => {
+    const slots = updatedSlots[day];
+    if (slots && slots.subjects) {
+      slots.subjects.forEach((sub, slotIdx) => {
+        const override = timetable.overrides?.[day]?.[slotIdx];
+        const finalSubName = override || sub.name;
+        const newPhase = updatedTracker[finalSubName] || 1;
+        const syllabus = timetable.subjectSyllabus[finalSubName] || [];
+        const newTopics = syllabus[newPhase - 1] || [];
+        
+        sub.name = finalSubName;
+        sub.phase = newPhase;
+        sub.topics = newTopics;
+      });
+    }
+  });
+
+  return {
+    ...timetable,
+    subjectRotationTracker: updatedTracker,
+    dailySlots: updatedSlots,
+    lastAutoRotationDate: todayStr
+  };
 };
-
