@@ -12,7 +12,7 @@ let isProcessing = false;
  */
 function sanitizeForFirestore(data) {
   if (data === null || data === undefined) {
-    return data;
+    return null; // Convert undefined to null for Firestore compatibility
   }
 
   if (Array.isArray(data)) {
@@ -24,6 +24,9 @@ function sanitizeForFirestore(data) {
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         const value = data[key];
+        if (value === undefined) {
+          continue; // Skip undefined fields entirely
+        }
         if (Array.isArray(value) && value.length > 0 && Array.isArray(value[0])) {
           // If value is an array of arrays, convert it to an object with numeric keys
           const obj = {};
