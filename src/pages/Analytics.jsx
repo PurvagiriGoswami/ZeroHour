@@ -12,19 +12,47 @@ export default function Analytics() {
     totalStudyMinutes30d = 0,
     subjectAccuracy = [],
     subjectMinutes = {},
-    weeklyPlanAdherence = []
+    weeklyPlanAdherence = [],
+    calendarData = []
   } = derived_analytics || {};
 
   const totalHours30d = (totalStudyMinutes30d / 60).toFixed(1);
   const avgHoursPerDay = totalStudyMinutes30d > 0 ? 
     (totalHours30d / Math.min(30, weeklyPlanAdherence.length || 30)).toFixed(1) : '0';
 
+  // Group calendar data by week for heatmap
+  const groupByWeek = (data) => {
+    const weeks = [];
+    let currentWeek = [];
+    data.forEach((day, index) => {
+      const date = new Date(day.date + 'T00:00:00');
+      const dayOfWeek = date.getDay(); // 0 = Sunday
+      
+      if (index === 0) {
+        // Fill leading days with empty
+        for (let i = 0; i < dayOfWeek; i++) {
+          currentWeek.push(null);
+        }
+      }
+      
+      currentWeek.push(day);
+      
+      if (dayOfWeek === 6 || index === data.length - 1) {
+        weeks.push([...currentWeek]);
+        currentWeek = [];
+      }
+    });
+    return weeks;
+  };
+
+  const weeks = groupByWeek(calendarData);
+
   return (
     <div className="page-inner fade-in" style={{ paddingBottom: '100px' }}>
       {/* Header */}
       <div style={{ marginBottom: '30px' }}>
         <h1 className="card-title">Analytics</h1>
-        <p style={{ color: 'var(--text4)', fontSize: '14px', marginTop: '5px' }}>Last 30 days</p>
+        <p style={{ color: 'var(--text4)', fontSize: '14px', marginTop: '5px' }}>Last 90 days</p>
       </div>
 
       {/* Overview Stats */}
@@ -36,6 +64,73 @@ export default function Analytics() {
         <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
           <div style={{ fontSize: '11px', color: 'var(--text4)', fontWeight: '700', marginBottom: '6px' }}>AVG PER DAY</div>
           <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--accent)' }}>{avgHoursPerDay}h</div>
+        </div>
+      </div>
+
+      {/* Study Streak Calendar */}
+      <div style={{ marginBottom: '25px' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text)', marginBottom: '12px' }}>Study Streak</h2>
+        <div className="card" style={{ padding: '16px', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '8px', minWidth: 'max-content' }}>
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {week.map((day, dayIndex) => {
+                  if (!day) {
+                    return <div key={dayIndex} style={{ width: '12px', height: '12px' }} />;
+                  }
+                  const color = day.hasStudy ? 'var(--green)' : 'var(--bg4)';
+                  return (
+                    <div 
+                      key={day.date} 
+                      title={`${new Date(day.date + 'T00:00:00').toLocaleDateString()} - ${day.hasStudy ? 'Studied' : 'No study'}`}
+                      style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        background: color, 
+                        borderRadius: '2px' 
+                      }} 
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Weekly Adherence Heatmap */}
+      <div style={{ marginBottom: '25px' }}>
+        <h2 style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text)', marginBottom: '12px' }}>Weekly Adherence</h2>
+        <div className="card" style={{ padding: '16px', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '8px', minWidth: 'max-content' }}>
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {week.map((day, dayIndex) => {
+                  if (!day) {
+                    return <div key={dayIndex} style={{ width: '12px', height: '12px' }} />;
+                  }
+                  let color = 'var(--bg4)';
+                  if (day.adherencePct !== null) {
+                    if (day.adherencePct >= 80) color = 'var(--green)';
+                    else if (day.adherencePct >= 50) color = 'var(--accent)';
+                    else if (day.adherencePct > 0) color = 'var(--red)';
+                  }
+                  return (
+                    <div 
+                      key={day.date} 
+                      title={`${new Date(day.date + 'T00:00:00').toLocaleDateString()} - ${day.adherencePct !== null ? day.adherencePct + '%' : 'No targets'}`}
+                      style={{ 
+                        width: '12px', 
+                        height: '12px', 
+                        background: color, 
+                        borderRadius: '2px' 
+                      }} 
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -10,7 +10,28 @@ import { getISOWeek, getTodayISO } from '../utils/dateUtils'
 
 // ── LocalStorage helpers ──
 const sg = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb } catch { return fb } }
-const ss = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+const ss = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { } }
+// List of all app-owned localStorage keys for safe deletion
+const APP_LOCAL_STORAGE_KEYS = [
+  'zh_sessions', 'zh_topicMap', 'zh_mocks', 'zh_weeklyChecks',
+  'zh_pomodoro_today', 'zh_last_pomo_date', 'zh_errors', 'zh_doubts',
+  'zh_feynman', 'zh_radar', 'zh_xp', 'zh_milestones', 'zh_weeklyJournals',
+  'zh_intentions', 'zh_flashcards', 'zh_targets', 'zh_dailySummaries',
+  'zh_exam_registrations', 'zh_notifications', 'zh_weeklyTimetable',
+  'zh_dailyChecklist', 'zh_sessionLogs', 'zh_examList',
+  'quizResults', 'plannerTasks', 'zh_profile', 'zh_settings', 'zh_streak',
+  'zh_pomodoro', 'zh_sitrep', 'exams', 'weeklyPlan', 'weeklyPlanOverrides',
+  'dailyTargets', 'sessionLog', 'habits', '_localTs'
+];
+const clearAppLocalStorage = () => {
+  APP_LOCAL_STORAGE_KEYS.forEach(key => {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      console.error('[ZeroHour] Failed to remove localStorage key:', key, e);
+    }
+  });
+};
 
 // ── Default Exams ──
 const defaultExams = [
@@ -21,6 +42,21 @@ const defaultExams = [
 
 // ── Zustand Store ──
 export const useAppStore = create((set, get) => {
+  // Helper to migrate weekly timetable from array to object
+  const migrateWeeklyTimetable = (raw) => {
+    if (!raw) return DEFAULT_CDS_TIMETABLE;
+    // If dailySlots is an array, convert to object
+    if (Array.isArray(raw.dailySlots)) {
+      console.log('[ZeroHour] Migrating weekly timetable from array to object');
+      return {
+        ...DEFAULT_CDS_TIMETABLE,
+        ...raw,
+        dailySlots: DEFAULT_CDS_TIMETABLE.dailySlots
+      };
+    }
+    return raw;
+  };
+  
   // Initial state
   const initialState = {
     // ── Auth State ──
@@ -60,20 +96,7 @@ export const useAppStore = create((set, get) => {
     }),
     
     // ── Weekly Planner & Exam Slices ──
-    zh_weeklyTimetable: sg('zh_weeklyTimetable', {
-      templateId: 'user-configurable',
-      cycleStartDate: '2026-06-15',
-      dailySlots: [
-        { slots: [] }, // Monday
-        { slots: [] }, // Tuesday
-        { slots: [] }, // Wednesday
-        { slots: [] }, // Thursday
-        { slots: [] }, // Friday
-        { slots: [] }, // Saturday
-        { slots: [] }  // Sunday
-      ],
-      subjectSyllabus: DEFAULT_CDS_SYLLABUS
-    }),
+    zh_weeklyTimetable: migrateWeeklyTimetable(sg('zh_weeklyTimetable', null)),
     zh_dailyChecklist: sg('zh_dailyChecklist', {}),
     zh_sessionLogs: sg('zh_sessionLogs', []),
     zh_examList: sg('zh_examList', DEFAULT_EXAM_LIST),
@@ -148,7 +171,9 @@ export const useAppStore = create((set, get) => {
 
   // Helper to persist and compute derived
   const persistAndCompute = (partial) => set((state) => {
-    const newState = { ...state, ...partial }
+    // Support both object patches and function updaters
+    const patch = typeof partial === 'function' ? partial(state) : partial
+    const newState = { ...state, ...patch }
     const computedState = computeDerived(newState)
     // Persist all persisted keys
     const keysToPersist = [
@@ -161,6 +186,10 @@ export const useAppStore = create((set, get) => {
       'exams', 'weeklyPlan', 'weeklyPlanOverrides', 'dailyTargets', 'sessionLog', 'habits'
     ]
     keysToPersist.forEach(key => ss(key, computedState[key]))
+    // Schedule sync if we have uid and are hydrated
+    if (computedState.uid && computedState.hasHydrated) {
+      get()._scheduleSync()
+    }
     return computedState
   })
 
@@ -307,6 +336,7 @@ export const useAppStore = create((set, get) => {
       return state
     }),
     removeExam: (examId) => persistAndCompute((state) => ({ exams: state.exams.filter(e => e.id !== examId) })),
+    setExams: (exams) => persistAndCompute({ exams }),
 
     // ── Existing Actions (updated) ──
     setSessions: (zh_sessions) => persistAndCompute({ zh_sessions }),
@@ -419,8 +449,12 @@ export const useAppStore = create((set, get) => {
         habits: s.habits,
       }
       
-      scheduleSyncToFirestore(uid, stateToSync)
-      set({ syncStatus: 'ok' })
+      scheduleSyncToFirestore(
+        uid, 
+        stateToSync,
+        () => set({ syncStatus: 'ok' }), // onSuccess
+        () => set({ syncStatus: 'err' }) // onError
+      )
     },
 
     initFirebase: () => {
@@ -540,7 +574,7 @@ export const useAppStore = create((set, get) => {
         zh_sessions: [], zh_topicMap: {}, zh_mocks: [],
         zh_weeklyChecks: [], zh_pomodoro_today: 0, zh_last_pomo_date: null,
         quizResults: [], plannerTasks: [],
-        zh_weeklyTimetable: null,
+        zh_weeklyTimetable: DEFAULT_CDS_TIMETABLE,
         zh_dailyChecklist: {},
         zh_sessionLogs: [],
         zh_examList: DEFAULT_EXAM_LIST,
@@ -584,7 +618,7 @@ export const useAppStore = create((set, get) => {
         sessionLog: {},
         habits: {},
       }
-      localStorage.clear()
+      clearAppLocalStorage()
       persistAndCompute(clearState)
     },
 

@@ -18,7 +18,7 @@ const allSubjects = ['Maths', 'English', 'GK', 'PYQ', 'Mock', 'Revision', 'Free'
 const dayOrder = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const dayNamesFull = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-export default function WeeklyPlanner() {
+export default function WeeklyPlanner({ onConfirm, onClose, isStandalonePrompt = false }) {
   const {
     weeklyPlan,
     weeklyPlanOverrides,
@@ -139,7 +139,7 @@ export default function WeeklyPlanner() {
   }
 
   return (
-    <div className="page-inner fade-in" style={{ paddingBottom: '100px' }}>
+    <div className={isStandalonePrompt ? "" : "page-inner fade-in"} style={{ paddingBottom: '100px' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
@@ -148,10 +148,12 @@ export default function WeeklyPlanner() {
             Week of {weekDates[0]?.displayDate} – {weekDates[6]?.displayDate}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn" onClick={() => navigateWeek(-1)}>← Prev</button>
-          <button className="btn" onClick={() => navigateWeek(1)}>Next →</button>
-        </div>
+        {!isStandalonePrompt && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn" onClick={() => navigateWeek(-1)}>← Prev</button>
+            <button className="btn" onClick={() => navigateWeek(1)}>Next →</button>
+          </div>
+        )}
       </div>
 
       {/* Week Grid */}
@@ -243,12 +245,20 @@ export default function WeeklyPlanner() {
         </div>
       </div>
 
+      {/* Standalone Prompt Buttons */}
+      {isStandalonePrompt && (
+        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+          <button className="btn" style={{ flex: 1 }} onClick={onClose}>Skip for Today</button>
+          <button className="btn btn-g" style={{ flex: 1 }} onClick={() => { localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]); onConfirm?.(); }}>Finish Planning</button>
+        </div>
+      )}
+
       {/* Add/Edit Modal */}
       {showModal && (
         <div style={{
           position: 'fixed',
           inset: '0',
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(0,0,0, 0.8)',
           zIndex: '3000',
           display: 'flex',
           alignItems: 'center',

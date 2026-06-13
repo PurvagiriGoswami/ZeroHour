@@ -16,7 +16,7 @@
 <br/>
 
 [![Live Demo](https://img.shields.io/badge/LIVE_DEMO-zerohour--pvg.vercel.app-00ffc3?style=for-the-badge&logo=vercel&logoColor=black)](https://zerohour-pvg.vercel.app)
-[![Version](https://img.shields.io/badge/VERSION-7.0-00ffc3?style=for-the-badge)](#)
+[![Version](https://img.shields.io/badge/VERSION-7.1-00ffc3?style=for-the-badge)](#)
 [![React](https://img.shields.io/badge/REACT-18-61dafb?style=for-the-badge&logo=react&logoColor=black)](#)
 [![Firebase](https://img.shields.io/badge/FIREBASE-SYNC-ffca28?style=for-the-badge&logo=firebase&logoColor=black)](#)
 [![Vite](https://img.shields.io/badge/VITE-5-646cff?style=for-the-badge&logo=vite&logoColor=white)](#)
@@ -36,6 +36,7 @@
 
 - [What is ZeroHour?](#-what-is-zerohour)
 - [Live Demo](#-live-demo)
+- [What's New in v7.1?](#-whats-new-in-v71)
 - [Feature Suite](#-feature-suite)
 - [App Architecture](#-app-architecture)
 - [Tech Stack](#-tech-stack)
@@ -43,6 +44,7 @@
 - [Data Flow](#-data-flow)
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
+- [Firebase Security Rules](#-firebase-security-rules)
 - [Keyboard Shortcuts](#%EF%B8%8F-keyboard-shortcuts)
 - [Responsive Design](#-responsive-design)
 - [Deployment](#%EF%B8%8F-deployment)
@@ -81,6 +83,28 @@ BEFORE ZEROHOUR                          WITH ZEROHOUR
 | **Netlify** | [zerohour.netlify.app](https://zerohour.netlify.app) | ✅ Active |
 
 </div>
+
+---
+
+## ✨ What's New in v7.1?
+
+### 🚀 Key Improvements & Fixes
+- **✅ Fixed Zustand Store** - Now supports both object patches and function updaters
+- **✅ Fixed Firestore Sync Wiring** - Added onSuccess/onError callbacks, proper sync status updates
+- **✅ Fixed Sunday Weekly Planner Trap** - Added standalone mode with finish/skip buttons
+- **✅ Fixed Stale Spaced Repetition Test** - Created missing spacedRepetition.js file, all tests pass!
+- **✅ Fixed Weekly Timetable Default Mismatch** - Added migration from old array format
+- **✅ Fixed Onboarding Reachability** - Added localStorage check for reliable onboarding
+- **✅ Fixed Login Firebase Guard** - Added Firebase auth guard with friendly error messages
+- **✅ Safer Data Deletion** - Replaced localStorage.clear() with targeted removal
+- **✅ Added Sync Center in Settings** - Shows live sync status, allows force sync
+- **✅ Added Offline-First Write Queue** - Queues changes for later when offline
+- **✅ Improved JSON Backup/Restore** - Added full JSON import functionality
+- **✅ Added Study Streak Calendar** - 90-day streak heatmap in Analytics
+- **✅ Added Weekly Adherence Heatmap** - Visual target completion rate
+- **✅ Fixed Firestore Security Rules** - Updated rules to correct path
+- **✅ Cleaned Up Redundant Files** - Removed unused files from project
+- **✅ Optimized Build** - Added manual chunking for better load performance
 
 ---
 
@@ -268,7 +292,20 @@ ANALYTICS DASHBOARD — METRICS TRACKED
   📈 Mock score trend vs target   (line + target overlay)
   📚 Syllabus completion %        (per subject)
   ⚠️ Weak areas summary           (all topics < 60% accuracy)
+  📆 90-Day Study Streak Calendar (heatmap)
+  📊 Weekly Adherence Heatmap     (target completion rate)
 ```
+
+---
+
+### ⚙ Settings
+Full configuration and data management:
+
+- 🔄 **Sync Center** - Real-time sync status, force sync button
+- 📋 **Notifications** - Toggle notifications on/off
+- 📄 **Data Operations** - Excel export, JSON backup/import
+- 🗑️ **Data Management** - Safe targeted data deletion
+- 📅 **Weekly Timetable** - Configure your study schedule
 
 ---
 
@@ -285,12 +322,12 @@ graph TB
 
     subgraph CLOUD["☁️ Cloud — Firebase"]
         FS["Firestore\n(Real-time Sync)"]
-        AUTH["Auth\n(Planned)"]
+        AUTH["Auth\n(Email/Password + Google)"]
     end
 
     subgraph EXPORT["📤 Export"]
         EXCEL["Excel (SheetJS)"]
-        JSON["JSON Backup"]
+        JSON["JSON Backup + Import"]
     end
 
     UI <--> STORE
@@ -312,6 +349,7 @@ graph TB
 | **Build Tool** | Vite | 5 | Fast dev server + build |
 | **State** | Zustand | 5 | Global state, zero boilerplate |
 | **Cloud Sync** | Firebase Firestore | v9 | Real-time cross-device sync |
+| **Auth** | Firebase Auth | v9 | Email/Password + Google SSO |
 | **Charts** | Recharts + Custom SVG | — | Analytics + dashboard charts |
 | **Styling** | Tailwind CSS v4 + Custom CSS | v4 | Utility + bespoke dark theme |
 | **Export** | SheetJS (xlsx) | — | Excel export / import |
@@ -337,6 +375,8 @@ zerohour/
 ├── ⚙️  vite.config.js
 ├── 🔧 netlify.toml
 ├── 🔒 .env                         # Firebase credentials (NOT committed)
+├── 📄 .env.example                # Environment variable template
+├── 📄 firestore.rules              # Firestore security rules
 │
 └── src/
     ├── 🚀 App.jsx                  # Root — routing, swipe nav, keyboard shortcuts
@@ -354,19 +394,16 @@ zerohour/
     │   └── Card.jsx                # Reusable card
     │
     ├── pages/
-    │   ├── 📊 Dashboard.jsx        # Command centre overview
-    │   ├── 📅 DailyLog.jsx         # Daily study diary
-    │   ├── 🔥 Habits.jsx           # Habit tracker + heatmap
-    │   ├── 📚 Syllabus.jsx         # Full syllabus tracker
-    │   ├── 📝 Mocks.jsx            # Mock test logger + analysis
-    │   ├── 📋 PYQLog.jsx           # PYQ session tracker
-    │   ├── 🔄 Revision.jsx         # Spaced revision system
-    │   ├── ⏱  Pomodoro.jsx         # Focus timer
-    │   ├── 📖 Vocab.jsx            # Vocabulary bank
-    │   ├── 🧠 Quiz.jsx             # Weekly quiz engine
-    │   ├── 📋 Planner.jsx          # Smart daily planner
-    │   ├── 📊 Analytics.jsx        # Performance analytics
-    │   └── ⚙️  Settings.jsx         # Config + about + data management
+    │   ├── 📊 HQDashboard.jsx      # Command centre overview
+    │   ├── 📅 DailyTargets.jsx     # Daily study targets
+    │   ├── 🔥 WeeklyPlanner.jsx    # Weekly schedule planner
+    │   ├── 📚 SyllabusSetup.jsx    # Full syllabus tracker
+    │   ├── 📝 MockTestLog.jsx      # Mock test logger + analysis
+    │   ├── 📋 RevisionQueue.jsx    # Spaced revision system
+    │   ├── ⏱ SessionLogger.jsx     # Focus timer
+    │   ├── 📖 Profile.jsx          # User profile + settings
+    │   ├── 🧠 Analytics.jsx        # Performance analytics + streak calendar
+    │   └── ⚙️  Settings.jsx         # Config + sync center + data management
     │
     ├── store/
     │   └── 🗄️  useStore.js          # Zustand store + Firebase sync logic
@@ -374,12 +411,14 @@ zerohour/
     ├── utils/
     │   ├── 📅 dateUtils.js          # Date formatting, streak calc
     │   ├── 🔄 spacedRepetition.js   # SRS algorithm + due-date logic
-    │   ├── 🧠 weaknessEngine.js     # Accuracy analysis, weak area detection
-    │   ├── 📖 vocabEngine.js        # Synonym/antonym generation, idioms bank
-    │   └── 📚 initialVocab.js       # 120+ pre-loaded defence vocabulary
+    │   ├── 🧠 tacticalEngine.js     # Accuracy analysis, weak area detection
+    │   ├── 📖 helpers.js            # Utility functions
+    │   ├── 📚 derivedState.js       # Derived state calculations
+    │   └── timerSound.js            # Pomodoro timer sounds
     │
     └── services/
-        └── 📤 excelService.js       # SheetJS export / import
+        ├── 📤 excelService.js       # SheetJS export / import
+        └── ☁️ firebaseSync.js       # Firestore sync + offline queue
 ```
 
 ---
@@ -419,6 +458,7 @@ sequenceDiagram
 - Node.js ≥ 18
 - npm or yarn
 - A Firebase project with Firestore enabled
+- Email/Password authentication enabled in Firebase
 
 ### Installation
 
@@ -455,6 +495,13 @@ npm run preview
 # Spins up a local server serving the /dist build
 ```
 
+### Run Tests
+
+```bash
+npm test
+# Runs all tests with Vitest
+```
+
 ---
 
 ## 🔒 Environment Variables
@@ -481,7 +528,38 @@ To get these values:
 
 ---
 
-## 🔄 Spaced Repetition Algorithm
+## � Firebase Security Rules
+
+The updated security rules are in `firestore.rules`:
+
+```rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/userData/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+### How to Deploy Rules:
+1. **Via Firebase CLI**:
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
+
+2. **Via Firebase Console**:
+   - Go to Firebase Console → Firestore Database → Rules
+   - Copy-paste the rules from `firestore.rules`
+   - Click "Publish"!
+
+---
+
+## �🔄 Spaced Repetition Algorithm
 
 ZeroHour uses a **custom SRS (Spaced Repetition System)** inspired by SM-2:
 
@@ -521,11 +599,11 @@ Navigate the entire app without touching your mouse:
 
 | Key | Page | Key | Page |
 |-----|------|-----|------|
-| `1` | 📊 Dashboard | `6` | 📋 PYQ Log |
-| `2` | 📅 Daily Log | `7` | 🔄 Revision |
-| `3` | 🔥 Habits | `8` | ⏱ Pomodoro |
-| `4` | 📚 Syllabus | `9` | 📖 Vocabulary |
-| `5` | 📝 Mocks | `0` | 🧠 Quiz |
+| `1` | 📊 HQ Dashboard | `6` | � Daily Targets |
+| `2` | 📅 Weekly Planner | `7` | � Mock Test Log |
+| `3` | � Revision Queue | `8` | ⏱ Session Logger |
+| `4` | 📚 Syllabus Setup | `9` | � Profile |
+| `5` | � Analytics | `0` | ⚙️ Settings |
 
 > 📱 On mobile — **swipe left / right** to navigate between pages.
 
@@ -547,7 +625,7 @@ BREAKPOINT STRATEGY
 
 ```mermaid
 graph LR
-    subgraph Mobile["📱 Mobile &lt;768px"]
+    subgraph Mobile["📱 Mobile <768px"]
         M1[Bottom Tab Bar]
         M2[Touch Swipe Nav]
         M3[Full-screen Pages]
@@ -556,7 +634,7 @@ graph LR
         T1[Icon-only Sidebar]
         T2[Two-column Grids]
     end
-    subgraph Desktop["🖥 Desktop &gt;1024px"]
+    subgraph Desktop["🖥 Desktop >1024px"]
         D1[Full Sidebar]
         D2[Multi-column Layouts]
         D3[Keyboard Shortcuts]
@@ -621,25 +699,26 @@ Deploy   Deploy
 ```
 ZEROHOUR ROADMAP
 ─────────────────────────────────────────
-  v7.0 (Current)
+  v7.1 (Current)
   ✅  13 fully integrated modules
-  ✅  Firebase real-time sync
+  ✅  Firebase real-time sync with offline queue
   ✅  Excel + JSON export/import
   ✅  120+ vocabulary engine
   ✅  Custom SRS algorithm
-  ✅  Vercel + Netlify deployment
+  ✅  Study streak calendar + adherence heatmap
+  ✅  Sync center in Settings
+  ✅  Fixed all security + reliability issues
 
   v8.0 (Planned)
-  🔲  Google / Phone SSO authentication
-  🔲  Multi-user support with data isolation
-  🔲  Offline PWA mode + service worker
   🔲  Push notifications for revision reminders
+  🔲  Offline PWA mode + service worker
+  🔲  Dark / light theme toggle
+  🔲  Improved mobile UI
 
   v9.0 (Future)
   🔲  AI-generated study schedule from exam date
   🔲  PDF monthly performance report export
   🔲  NDA full syllabus expansion
-  🔲  Dark / light theme toggle
 ─────────────────────────────────────────
 ```
 
@@ -649,16 +728,14 @@ ZEROHOUR ROADMAP
 
 | Module | Charts | SRS | Firebase Sync | Export | Mobile |
 |--------|--------|-----|---------------|--------|--------|
-| Dashboard | ✅ | ✅ | ✅ | — | ✅ |
-| Daily Log | — | — | ✅ | ✅ | ✅ |
-| Habits | ✅ | — | ✅ | — | ✅ |
+| HQ Dashboard | ✅ | ✅ | ✅ | — | ✅ |
+| Weekly Planner | — | — | ✅ | — | ✅ |
+| Daily Targets | — | ✅ | ✅ | — | ✅ |
 | Syllabus | ✅ | ✅ | ✅ | — | ✅ |
 | Mock Analysis | ✅ | — | ✅ | ✅ | ✅ |
-| Revision | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Vocabulary | — | ✅ | ✅ | ✅ | ✅ |
-| Quiz | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Pomodoro | ✅ | — | ✅ | — | ✅ |
-| Planner | — | ✅ | ✅ | — | ✅ |
+| Revision Queue | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Session Logger | ✅ | — | ✅ | — | ✅ |
+| Profile | — | — | ✅ | ✅ | ✅ |
 | Analytics | ✅ | — | ✅ | — | ✅ |
 | Settings | — | — | ✅ | ✅ | ✅ |
 

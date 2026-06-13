@@ -9,7 +9,7 @@ import { getTodayISO } from '../utils/dateUtils'
 export default function Settings() {
   const { 
     settings, syncStatus, zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks,
-    exams, addExam, updateExam, removeExam,
+    exams, addExam, updateExam, removeExam, setExams,
     zh_weeklyTimetable, setWeeklyTimetable
   } = useAppStore(
     useShallow(s => ({
@@ -23,6 +23,7 @@ export default function Settings() {
       addExam: s.addExam,
       updateExam: s.updateExam,
       removeExam: s.removeExam,
+      setExams: s.setExams,
       zh_weeklyTimetable: s.zh_weeklyTimetable,
       setWeeklyTimetable: s.setWeeklyTimetable
     }))
@@ -94,6 +95,32 @@ export default function Settings() {
     el.download = `ZeroHour_Backup_${new Date().toISOString().split('T')[0]}.json`
     el.click()
     toast('📁 JSON backup downloaded', 'ok')
+  }
+
+  function handleImportJSON(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (data.zh_sessions) store.setSessions(data.zh_sessions)
+        if (data.zh_topicMap) store.setTopicMap(data.zh_topicMap)
+        if (data.zh_mocks) store.setZhMocks(data.zh_mocks)
+        if (data.zh_weeklyChecks) store.setWeeklyChecks(data.zh_weeklyChecks)
+        if (data.settings) store.setSettings(data.settings)
+        if (data.exams) {
+          // Replace exams
+          store.setExams(data.exams)
+        }
+        toast('✅ JSON backup imported successfully', 'ok')
+      } catch (err) {
+        toast('❌ Failed to import JSON: Invalid file', 'err')
+      }
+      // Clear file input
+      if (fileRef.current) fileRef.current.value = ''
+    }
+    reader.readAsText(file)
   }
 
   const handleAddCustomExam = () => {
@@ -354,24 +381,81 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* ── SYNC CENTER ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 20 }}>SYNC CENTER</div>
+        <div style={{ padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div>
+              <div className="label-caps" style={{ fontSize: 10 }}>Sync Status</div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: syncColors[syncStatus] }} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: syncColors[syncStatus] }}>{syncLabels[syncStatus]}</span>
+              </div>
+            </div>
+            <button 
+              className="btn" 
+              style={{ fontSize: 10 }} 
+              onClick={() => store._scheduleSync()}
+              disabled={syncStatus === 'syncing'}
+            >
+              {syncStatus === 'syncing' ? 'SYNCING...' : 'FORCE SYNC'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── NOTIFICATIONS CENTER ── */}
+      <div className="card">
+        <div className="label-caps" style={{ marginBottom: 20 }}>NOTIFICATIONS CENTER</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, background: 'var(--bg3)', borderRadius: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Enable Notifications</div>
+            <button 
+              className="btn"
+              style={{ fontSize: 10 }}
+              onClick={() => {
+                store.setSettings({
+                  ...settings,
+                  notificationsEnabled: !settings.notificationsEnabled
+                })
+              }}
+            >
+              {settings.notificationsEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          {settings.notificationsEnabled && (
+            <div style={{ padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--text4)', marginBottom: 8 }}>
+                Check browser notification permissions in your settings.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="card">
         <div className="label-caps" style={{ marginBottom: 20 }}>Data Operations</div>
         <div className="g2" style={{ marginBottom: 20 }}>
           <button className="btn" style={{ width: '100%' }} onClick={handleExportExcel}>EXPORT EXCEL</button>
           <button className="btn" style={{ width: '100%' }} onClick={handleExportJSON}>EXPORT JSON BACKUP</button>
         </div>
-        
-        <div style={{ padding: 20, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div className="label-caps" style={{ fontSize: 10 }}>Sync Status</div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: syncColors[syncStatus] }} />
-                <span style={{ fontSize: 11, fontWeight: 800, color: syncColors[syncStatus] }}>{syncLabels[syncStatus]}</span>
-              </div>
-            </div>
-            <button className="btn" style={{ fontSize: 10 }} onClick={() => store.clearAllData()}>PURGE ALL DATA</button>
-          </div>
+        <div className="g2" style={{ marginBottom: 20 }}>
+          <input 
+            type="file" 
+            ref={fileRef}
+            accept="application/json" 
+            style={{ display: 'none' }} 
+            onChange={handleImportJSON}
+          />
+          <button 
+            className="btn btn-g" 
+            style={{ width: '100%' }} 
+            onClick={() => fileRef.current?.click()}
+          >
+            IMPORT JSON BACKUP
+          </button>
+          <button className="btn" style={{ fontSize: 10, width: '100%' }} onClick={() => store.clearAllData()}>PURGE ALL DATA</button>
         </div>
       </div>
 

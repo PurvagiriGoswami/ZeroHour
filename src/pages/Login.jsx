@@ -63,6 +63,13 @@ export default function Login() {
     e.preventDefault()
     setError('')
     setLoading(true)
+    
+    if (!auth) {
+      setError('Firebase Authentication is not initialized. Please check your environment variables.')
+      setLoading(false)
+      return
+    }
+    
     try {
       if (isSignUp) {
         const res = await createUserWithEmailAndPassword(auth, email, password)
@@ -71,7 +78,23 @@ export default function Login() {
         await signInWithEmailAndPassword(auth, email, password)
       }
     } catch (err) {
-      setError(err.message)
+      let friendlyMessage = err.message
+      
+      if (err.code === 'auth/operation-not-allowed') {
+        friendlyMessage = 'Email/Password sign-in is not enabled in the Firebase Console. Go to Authentication > Sign-in method to enable it.'
+      } else if (err.code === 'auth/invalid-email') {
+        friendlyMessage = 'Please enter a valid email address.'
+      } else if (err.code === 'auth/user-disabled') {
+        friendlyMessage = 'This account has been disabled. Please contact support.'
+      } else if (err.code === 'auth/user-not-found') {
+        friendlyMessage = 'No account found with this email. Please sign up first.'
+      } else if (err.code === 'auth/wrong-password') {
+        friendlyMessage = 'Incorrect password. Please try again.'
+      } else if (err.code === 'auth/weak-password') {
+        friendlyMessage = 'Password should be at least 6 characters long.'
+      }
+      
+      setError(friendlyMessage)
     } finally {
       setLoading(false)
     }

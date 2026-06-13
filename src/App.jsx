@@ -62,6 +62,16 @@ export default function App() {
   const [tab, setTab] = useState('hq')
   const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false)
 
+  // Check onboarding status
+  useEffect(() => {
+    if (hasHydrated && user) {
+      const onboardingComplete = localStorage.getItem('zh_onboarding_complete') === 'true';
+      if (!onboardingComplete) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [hasHydrated, user])
+
   // Trigger Weekly Planner on Sunday
   useEffect(() => {
     const today = new Date();
@@ -123,10 +133,17 @@ export default function App() {
   if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} />
   if (showWeeklyPlanner) return (
     <Suspense fallback={<Skeleton type="page" />}>
-      <WeeklyPlanner onConfirm={() => {
-        setShowWeeklyPlanner(false);
-        localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
-      }} />
+      <WeeklyPlanner 
+        isStandalonePrompt={true}
+        onConfirm={() => {
+          setShowWeeklyPlanner(false);
+          localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
+        }} 
+        onClose={() => {
+          setShowWeeklyPlanner(false);
+          localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
+        }} 
+      />
     </Suspense>
   );
 

@@ -45,6 +45,9 @@ export default function Onboarding({ onComplete }) {
         date: examDate
       })
 
+      // Mark onboarding complete in localStorage
+      localStorage.setItem('zh_onboarding_complete', 'true')
+
       onComplete()
     } catch (err) {
       toast(err.message, 'err')

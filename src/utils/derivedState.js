@@ -103,6 +103,7 @@ export function computeDerived(state) {
 
   // ── 8. ROLLING ANALYTICS ──
   const last30 = getLastNDays(30)
+  const last90 = getLastNDays(90)
 
   const subjectAccuracy = {}
   const subjectMinutes = {}
@@ -121,6 +122,16 @@ export function computeDerived(state) {
     return { date: d, planned: targets.length, done, pct: targets.length ? done / targets.length : null }
   })
 
+  // Prepare last 90 days for streak calendar
+  const calendarData = last90.map(d => {
+    const sessions = state.sessionLog[d] ?? []
+    const targets = state.dailyTargets[d] ?? []
+    const doneCount = targets.filter(t => t.status === 'done').length
+    const hasStudy = sessions.some(s => s.actualMinutes > 0)
+    const adherencePct = targets.length ? Math.round((doneCount / targets.length) * 100) : null
+    return { date: d, hasStudy, adherencePct }
+  })
+
   state.derived_analytics = {
     totalStudyMinutes30d: Object.values(subjectMinutes).reduce((s, v) => s + v, 0),
     subjectAccuracy: Object.entries(subjectAccuracy).map(([subject, { a, c }]) => ({
@@ -132,6 +143,7 @@ export function computeDerived(state) {
     })),
     subjectMinutes,
     weeklyPlanAdherence: adherenceData,
+    calendarData
   }
 
   return state
