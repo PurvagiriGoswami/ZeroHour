@@ -7,7 +7,6 @@ import Skeleton from './components/Skeleton'
 import ErrorBoundary from './components/ErrorBoundary'
 import Onboarding from './pages/Onboarding'
 import Login from './pages/Login'
-import { getAutoProgressionUpdate } from './utils/tacticalEngine'
 
 // Lazy loaded pages (New Unified System)
 const HQDashboard = lazy(() => import('./pages/HQDashboard'));
@@ -49,8 +48,6 @@ export default function App() {
   const initFirebase = useAppStore(s => s.initFirebase)
   const syncStatus = useAppStore(s => s.syncStatus)
   const hasHydrated = useAppStore(s => s.hasHydrated)
-  const zh_weeklyTimetable = useAppStore(s => s.zh_weeklyTimetable)
-  const setWeeklyTimetable = useAppStore(s => s.setWeeklyTimetable)
   
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -60,7 +57,6 @@ export default function App() {
     typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
   )
   const [tab, setTab] = useState('hq')
-  const [showWeeklyPlanner, setShowWeeklyPlanner] = useState(false)
 
   // Check onboarding status
   useEffect(() => {
@@ -71,18 +67,6 @@ export default function App() {
       }
     }
   }, [hasHydrated, user])
-
-  // Trigger Weekly Planner on Sunday
-  useEffect(() => {
-    const today = new Date();
-    const isSunday = today.getDay() === 0;
-    const lastPlanDate = localStorage.getItem('zh_last_plan_date');
-    const todayStr = today.toISOString().split('T')[0];
-
-    if (isSunday && lastPlanDate !== todayStr) {
-      setShowWeeklyPlanner(true);
-    }
-  }, []);
 
   // Handle Resize
   useEffect(() => {
@@ -103,18 +87,6 @@ export default function App() {
       })
   }, [initFirebase])
 
-  // Monday Auto-rotation Progression
-  useEffect(() => {
-    if (hasHydrated && zh_weeklyTimetable) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const updated = getAutoProgressionUpdate(zh_weeklyTimetable, todayStr);
-      if (updated) {
-        setWeeklyTimetable(updated);
-        console.log("Monday Auto-Progression secured: rotated active syllabus phases.");
-      }
-    }
-  }, [hasHydrated, zh_weeklyTimetable, setWeeklyTimetable])
-
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -131,21 +103,6 @@ export default function App() {
   if (isInitialLoad || !hasHydrated) return <Skeleton type="full" />
   if (!user) return <Login />
   if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} />
-  if (showWeeklyPlanner) return (
-    <Suspense fallback={<Skeleton type="page" />}>
-      <WeeklyPlanner 
-        isStandalonePrompt={true}
-        onConfirm={() => {
-          setShowWeeklyPlanner(false);
-          localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
-        }} 
-        onClose={() => {
-          setShowWeeklyPlanner(false);
-          localStorage.setItem('zh_last_plan_date', new Date().toISOString().split('T')[0]);
-        }} 
-      />
-    </Suspense>
-  );
 
   return (
     <div className={`app-shell ${isMenuCollapsed ? 'collapsed' : ''} ${isMobile ? 'mobile' : ''}`}>
