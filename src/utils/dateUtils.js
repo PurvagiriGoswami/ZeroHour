@@ -60,3 +60,39 @@ export function calcStreak(logs) {
 }
 
 export const clamp = (n, min, max) => Math.max(min, Math.min(max, Number(n) || 0))
+
+export function getTodayISO() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+}
+
+export function getDOW(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return days[d.getDay()]
+}
+
+export function getLastNDays(n) {
+  const days = []
+  for (let i = 0; i < n; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    days.push(d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }))
+  }
+  return days
+}
+
+export function diffDays(from, to) {
+  const fromD = new Date(from + 'T00:00:00')
+  const toD = new Date(to + 'T00:00:00')
+  return Math.ceil((toD - fromD) / 86400000)
+}
+
+export function getISOWeek(date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
+  const week1 = new Date(d.getFullYear(), 0, 4)
+  week1.setHours(0, 0, 0, 0)
+  week1.setDate(week1.getDate() + 3 - (week1.getDay() + 6) % 7)
+  return Math.ceil(((d - week1) / 86400000 + 1) / 7)
+}

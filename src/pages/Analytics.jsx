@@ -1,460 +1,141 @@
-import { useMemo, useState } from 'react'
-import { useAppStore } from '../store/useStore'
-import { useShallow } from 'zustand/react/shallow'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line } from 'recharts'
-import SafeChart from '../components/SafeChart'
-import { MASTER_TOPICS, RADAR_SUBJECTS } from '../data'
+import React from 'react';
+import { useAppStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
+import { SUBJECT_COLORS } from '../data';
 
 export default function Analytics() {
-  const { 
-    zh_mocks, zh_topicMap, zh_sessions, settings, zh_radar, 
-    zh_errors, zh_xp, zh_targets, zh_dailySummaries, 
-    zh_weeklyTimetable, zh_dailyChecklist 
-  } = useAppStore(
-    useShallow(s => ({
-      zh_mocks: s.zh_mocks,
-      zh_topicMap: s.zh_topicMap,
-      zh_sessions: s.zh_sessions,
-      settings: s.settings,
-      zh_radar: s.zh_radar,
-      zh_errors: s.zh_errors,
-      zh_xp: s.zh_xp,
-      zh_targets: s.zh_targets,
-      zh_dailySummaries: s.zh_dailySummaries,
-      zh_weeklyTimetable: s.zh_weeklyTimetable,
-      zh_dailyChecklist: s.zh_dailyChecklist
-    }))
-  )
+  const { derived_analytics } = useAppStore(
+    useShallow(s => ({ derived_analytics: s.derived_analytics }))
+  );
 
-  const { setRadar } = useAppStore();
+  const {
+    totalStudyMinutes30d = 0,
+    subjectAccuracy = [],
+    subjectMinutes = {},
+    weeklyPlanAdherence = []
+  } = derived_analytics || {};
 
-  const [activeTab, setActiveTab] = useState('performance'); // performance | targets | topics
-
-  // 1. Topic Accuracy Analytics
-  const topicAccuracy = useMemo(() => {
-    const accuracyMap = {};
-    // Calculate from zh_sessions (score) and zh_mocks
-    zh_sessions.forEach(s => {
-      if (s.score) {
-        if (!accuracyMap[s.subject]) accuracyMap[s.subject] = [];
-        accuracyMap[s.subject].push(parseFloat(s.score));
-      }
-    });
-    
-    return Object.entries(accuracyMap).map(([subject, scores]) => {
-      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-      return { subject, avg };
-    }).sort((a, b) => a.avg - b.avg);
-  }, [zh_sessions]);
-
-  // 2. Topic Coverage (Days since last attempt)
-  const topicCoverage = useMemo(() => {
-    const lastAttempted = {};
-    const today = new Date();
-    
-    zh_sessions.forEach(s => {
-      const date = new Date(s.date);
-      if (!lastAttempted[s.subject] || date > new Date(lastAttempted[s.subject])) {
-        lastAttempted[s.subject] = s.date;
-      }
-    });
-
-    return RADAR_SUBJECTS.map(sub => {
-      const lastDate = lastAttempted[sub];
-      const diffDays = lastDate ? Math.ceil((today - new Date(lastDate)) / (1000 * 60 * 60 * 24)) : 999;
-      return { subject: sub, lastDate, diffDays };
-    }).sort((a, b) => b.diffDays - a.diffDays);
-  }, [zh_sessions]);
-
-  // 6. Radar Data
-  const radarData = useMemo(() => {
-    return RADAR_SUBJECTS.map(sub => ({
-      subject: sub,
-      A: zh_radar[sub] || 5,
-      fullMark: 10
-    }));
-  }, [zh_radar]);
-
-  // 5. Mock Trend Data
-  const trendData = useMemo(() => {
-    return zh_mocks.map(m => ({
-      date: m.date,
-      score: (m.calculated?.totalMarks / 300) * 100,
-      type: m.type
-    })).sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [zh_mocks]);
-
-  // 7. Weak Area Heatmap
-  const heatmapGrid = useMemo(() => {
-    return RADAR_SUBJECTS.map(sub => {
-      const errors = zh_errors.filter(e => e.subject.includes(sub)).length;
-      const rating = zh_radar[sub] || 5;
-      // Intensity: higher errors + lower rating = redder
-      const intensity = Math.min(100, (errors * 10) + (10 - rating) * 10);
-      return { sub, errors, rating, intensity };
-    });
-  }, [zh_errors, zh_radar]);
-
-  const getHeatmapColor = (intensity) => {
-    if (intensity > 70) return '#ef4444'; // Red
-    if (intensity > 40) return '#f59e0b'; // Amber
-    return '#22c55e'; // Green
-  };
-
-  // 5. Target Analytics Data
-  const targetHistory = useMemo(() => {
-    return zh_dailySummaries.slice(-7).map(s => ({
-      date: s.date.split('-').slice(1).join('/'),
-      rate: Math.round(s.completion_rate)
-    }));
-  }, [zh_dailySummaries]);
-
-  const topicCompletion = useMemo(() => {
-    const data = {};
-    zh_targets.forEach(t => {
-      if (!data[t.type]) data[t.type] = { done: 0, total: 0 };
-      data[t.type].total++;
-      if (t.status === 'complete') data[t.type].done++;
-    });
-    return Object.entries(data).map(([name, stats]) => ({
-      name,
-      rate: Math.round((stats.done / stats.total) * 100),
-      total: stats.total
-    }));
-  }, [zh_targets]);
-
-  // Phase Progress calculations
-  const phaseProgressData = useMemo(() => {
-    if (!zh_weeklyTimetable?.subjectRotationTracker || !zh_weeklyTimetable?.subjectSyllabus) {
-      return [];
-    }
-    return Object.entries(zh_weeklyTimetable.subjectRotationTracker).map(([subject, currentPhase]) => {
-      const syllabus = zh_weeklyTimetable.subjectSyllabus[subject] || [];
-      const totalPhases = syllabus.length;
-      return {
-        subject,
-        currentPhase,
-        totalPhases,
-        percent: totalPhases > 0 ? Math.round((currentPhase / totalPhases) * 100) : 0
-      };
-    });
-  }, [zh_weeklyTimetable]);
-
-  // Slot completion rate chart data
-  const slotTypeCompletion = useMemo(() => {
-    const counts = {
-      'Maths': { done: 0, total: 0 },
-      'Economics': { done: 0, total: 0 },
-      'GS-Subject': { done: 0, total: 0 },
-      'Revision': { done: 0, total: 0 },
-      'PYQ': { done: 0, total: 0 },
-      'Mock': { done: 0, total: 0 },
-      'Current Affairs': { done: 0, total: 0 }
-    };
-
-    Object.values(zh_dailyChecklist || {}).forEach(dayData => {
-      if (!dayData) return;
-      if (dayData.maths) {
-        counts['Maths'].total++;
-        if (dayData.maths.done) counts['Maths'].done++;
-      }
-      if (dayData.economics) {
-        counts['Economics'].total++;
-        if (dayData.economics.done) counts['Economics'].done++;
-      }
-      if (dayData.revision) {
-        counts['Revision'].total++;
-        if (dayData.revision.done) counts['Revision'].done++;
-      }
-      if (dayData.pyq) {
-        counts['PYQ'].total++;
-        if (dayData.pyq.done) counts['PYQ'].done++;
-      }
-      if (dayData.currentAffairs) {
-        counts['Current Affairs'].total++;
-        if (dayData.currentAffairs.done) counts['Current Affairs'].done++;
-      }
-      if (dayData.mock) {
-        counts['Mock'].total++;
-        if (dayData.mock.done) counts['Mock'].done++;
-      }
-      if (dayData.subjects) {
-        Object.keys(dayData.subjects).forEach(subName => {
-          const topics = dayData.subjects[subName];
-          Object.values(topics).forEach(topicState => {
-            counts['GS-Subject'].total += 2;
-            if (topicState.understood) counts['GS-Subject'].done++;
-            if (topicState.onepager) counts['GS-Subject'].done++;
-          });
-        });
-      }
-    });
-
-    return Object.entries(counts).map(([name, val]) => ({
-      name,
-      rate: val.total > 0 ? Math.round((val.done / val.total) * 100) : 0,
-      total: val.total
-    }));
-  }, [zh_dailyChecklist]);
-
-  // Weak Subject Alert Panel (one-pager completion < 60%)
-  const weakSubjectAlerts = useMemo(() => {
-    const alerts = [];
-    const subjectsToAnalyze = [
-      'Physics', 'Chemistry', 'Biology', 'Polity', 'Geography', 'Economics',
-      'History-Ancient', 'History-Medieval', 'History-Modern'
-    ];
-    
-    subjectsToAnalyze.forEach(subjectName => {
-      let totalOnePagers = 0;
-      let completedOnePagers = 0;
-      
-      Object.values(zh_dailyChecklist || {}).forEach(dayData => {
-        if (!dayData?.subjects) return;
-        const subjectObj = dayData.subjects[subjectName];
-        if (subjectObj) {
-          Object.values(subjectObj).forEach(topicState => {
-            totalOnePagers++;
-            if (topicState.onepager) {
-              completedOnePagers++;
-            }
-          });
-        }
-      });
-      
-      if (totalOnePagers >= 2) {
-        const rate = (completedOnePagers / totalOnePagers) * 100;
-        if (rate < 60) {
-          alerts.push({
-            subject: subjectName,
-            rate: Math.round(rate),
-            total: totalOnePagers
-          });
-        }
-      }
-    });
-    return alerts;
-  }, [zh_dailyChecklist]);
+  const totalHours30d = (totalStudyMinutes30d / 60).toFixed(1);
+  const avgHoursPerDay = totalStudyMinutes30d > 0 ? 
+    (totalHours30d / Math.min(30, weeklyPlanAdherence.length || 30)).toFixed(1) : '0';
 
   return (
-    <div className="page-inner fade-in" style={{ paddingBottom: 100 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
-        <div>
-          <h1 className="card-title" style={{ marginBottom: 5 }}>STRATEGIC ANALYTICS</h1>
-          <p style={{ color: 'var(--text4)', fontSize: 11 }}>In-depth performance evaluation and deployment matrix.</p>
+    <div className="page-inner fade-in" style={{ paddingBottom: '100px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '30px' }}>
+        <h1 className="card-title">Analytics</h1>
+        <p style={{ color: 'var(--text4)', fontSize: '14px', marginTop: '5px' }}>Last 30 days</p>
+      </div>
+
+      {/* Overview Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+        <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text4)', fontWeight: '700', marginBottom: '6px' }}>TOTAL HOURS</div>
+          <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--accent)' }}>{totalHours30d}h</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className={`btn ${activeTab === 'performance' ? 'active' : ''}`} onClick={() => setActiveTab('performance')} style={{ fontSize: 10 }}>PERFORMANCE</button>
-          <button className={`btn ${activeTab === 'targets' ? 'active' : ''}`} onClick={() => setActiveTab('targets')} style={{ fontSize: 10 }}>TARGETS</button>
-          <button className={`btn ${activeTab === 'topics' ? 'active' : ''}`} onClick={() => setActiveTab('topics')} style={{ fontSize: 10 }}>PHASE PROGRESS</button>
+        <div className="card" style={{ padding: '16px', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text4)', fontWeight: '700', marginBottom: '6px' }}>AVG PER DAY</div>
+          <div style={{ fontSize: '32px', fontWeight: '900', color: 'var(--accent)' }}>{avgHoursPerDay}h</div>
         </div>
       </div>
 
-      {activeTab === 'performance' && (
-        <div className="fade-in">
-          <div className="g2">
-            {/* 6. WEEKLY SELF-RATING RADAR */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 24 }}>Subject Proficiency Radar</div>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer>
-                  <RadarChart data={radarData}>
-                    <PolarGrid stroke="var(--border)" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text4)', fontSize: 10 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                    <Radar name="Proficiency" dataKey="A" stroke="var(--green)" fill="var(--green)" fillOpacity={0.4} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 20 }}>
-                {RADAR_SUBJECTS.map(sub => (
-                  <div key={sub}>
-                    <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 4 }}>{sub}</div>
-                    <input 
-                      type="range" min="1" max="10" 
-                      value={zh_radar[sub] || 5} 
-                      onChange={e => setRadar({ ...zh_radar, [sub]: parseInt(e.target.value) })}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 5. MOCK TREND GRAPH */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 24 }}>Mock Performance Trend</div>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
-                    <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
-                    <Legend />
-                    <Line type="monotone" dataKey="score" stroke="var(--indigo)" strokeWidth={2} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          <div className="g2" style={{ marginTop: 24 }}>
-            {/* 7. WEAK AREA HEATMAP */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Weak Area Heatmap</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {heatmapGrid.map(item => (
-                  <div key={item.sub} style={{ 
-                    padding: 15, borderRadius: 8, background: getHeatmapColor(item.intensity), 
-                    color: 'black', textAlign: 'center'
-                  }}>
-                    <div style={{ fontSize: 10, fontWeight: 900 }}>{item.sub.toUpperCase()}</div>
-                    <div style={{ fontSize: 8, opacity: 0.8 }}>Errors: {item.errors} | Rating: {item.rating}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* 4. ERROR PATTERN ALERTS */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Error Pattern Alerts</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {heatmapGrid.filter(i => i.errors >= 3).map(i => (
-                  <div key={i.sub} style={{ 
-                    padding: '12px 15px', borderRadius: 8, border: '1px solid var(--red)', 
-                    background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 800 }}>{i.sub} Focused Revision</div>
-                      <div style={{ fontSize: 9, color: 'var(--text4)' }}>{i.errors} errors detected in this subject</div>
-                    </div>
-                    <div style={{ background: 'var(--red)', color: 'white', padding: '4px 8px', borderRadius: 4, fontSize: 8, fontWeight: 900 }}>CRITICAL</div>
-                  </div>
-                ))}
-                {heatmapGrid.filter(i => i.errors >= 3).length === 0 && (
-                  <div style={{ padding: 40, textAlign: 'center', color: 'var(--text4)', fontSize: 12 }}>
-                    No significant error patterns detected yet.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'targets' && (
-        <div className="fade-in">
-          <div className="g2">
-            {/* 7-day completion rate */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 24 }}>7-Day Completion Rate</div>
-              <div style={{ height: 300 }}>
-                <ResponsiveContainer>
-                  <BarChart data={targetHistory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 9 }} />
-                    <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
-                    <Bar dataKey="rate" fill="var(--indigo)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Type breakdown */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 24 }}>Type-wise Efficiency</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {topicCompletion.map(item => (
-                  <div key={item.name}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11 }}>
-                      <span style={{ fontWeight: 700 }}>{item.name}</span>
-                      <span style={{ color: item.rate >= 80 ? 'var(--green)' : item.rate >= 50 ? 'var(--amber)' : 'var(--red)' }}>{item.rate}% ({item.total} targets)</span>
-                    </div>
-                    <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ 
-                        height: '100%', 
-                        width: `${item.rate}%`, 
-                        background: item.rate >= 80 ? 'var(--green)' : item.rate >= 50 ? 'var(--amber)' : 'var(--red)'
-                      }} />
-                    </div>
-                  </div>
-                ))}
-                {topicCompletion.length === 0 && (
-                  <div style={{ padding: 60, textAlign: 'center', color: 'var(--text4)', fontSize: 12 }}>
-                    No target data available for analysis.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'topics' && (
-        <div className="fade-in">
-          <div className="g2">
-            {/* Subject Phase-Progress Bars */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Subject Phase-Progress</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-                {phaseProgressData.map(item => {
-                  const color = SUBJECT_COLORS[item.subject] || '#22c55e';
+      {/* Subject Minutes Breakdown */}
+      {Object.keys(subjectMinutes).length > 0 && (
+        <div style={{ marginBottom: '25px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text)', marginBottom: '12px' }}>Time by Subject</h2>
+          <div className="card" style={{ padding: '18px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {Object.entries(subjectMinutes)
+                .sort(([, a], [, b]) => b - a)
+                .map(([subject, mins]) => {
+                  const percentage = totalStudyMinutes30d > 0 ? Math.round((mins / totalStudyMinutes30d) * 100) : 0;
+                  const color = SUBJECT_COLORS[subject] || 'var(--accent)';
                   return (
-                    <div key={item.subject} className="card" style={{ padding: 15, background: 'var(--bg2)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 11 }}>
-                        <span style={{ fontWeight: 700 }}>{item.subject}</span>
-                        <span style={{ color: color }}>Phase {item.currentPhase} / {item.totalPhases}</span>
+                    <div key={subject}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text)' }}>{subject}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text4)' }}>{(mins / 60).toFixed(1)}h • {percentage}%</div>
                       </div>
-                      <div style={{ height: 6, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden', marginBottom: 5 }}>
-                        <div style={{ height: '100%', width: `${item.percent}%`, background: color }} />
+                      <div style={{
+                        height: '8px',
+                        background: 'var(--bg4)',
+                        borderRadius: '4px',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${percentage}%`,
+                          background: color,
+                          borderRadius: '4px',
+                          transition: 'width 0.3s ease'
+                        }} />
                       </div>
-                      <div style={{ fontSize: 9, color: 'var(--text4)' }}>{item.percent}% Syllabus Complete</div>
                     </div>
                   );
                 })}
-              </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Per-Slot-Type Completion Rates */}
-            <div className="card">
-              <div className="label-caps" style={{ marginBottom: 20 }}>Slot-Type Completion Rates</div>
-              <div style={{ height: 250 }}>
-                <ResponsiveContainer>
-                  <BarChart data={slotTypeCompletion}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 8, fill: 'var(--text3)' }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 8, fill: 'var(--text3)' }} />
-                    <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)' }} />
-                    <Bar dataKey="rate" fill="var(--indigo)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              
-              {/* Weak-subject alerts inside the same column */}
-              <div style={{ marginTop: 20 }}>
-                <div className="label-caps" style={{ marginBottom: 12, fontSize: 10, color: 'var(--text4)' }}>Tactical Syllabus Advisories</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {weakSubjectAlerts.map(alert => (
-                    <div key={alert.subject} className="card" style={{ borderLeft: '4px solid var(--red)', background: 'rgba(239,68,68,0.02)', padding: 12 }}>
-                      <div style={{ fontWeight: 'bold', color: 'var(--red)', fontSize: 11 }}>WEAK SUBJECT ALERT: {alert.subject.toUpperCase()}</div>
-                      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4 }}>
-                        One-pager completion is at {alert.rate}% ({alert.total} checkpoints analyzed). Prioritize revision.
-                      </div>
-                    </div>
-                  ))}
-                  {weakSubjectAlerts.length === 0 && (
-                    <div style={{ fontSize: 10, fontStyle: 'italic', color: 'var(--text4)' }}>
-                      All subject check-off rates within acceptable tactical bounds.
+      {/* Subject Accuracy & Weak Subjects */}
+      {subjectAccuracy.length > 0 && (
+        <div style={{ marginBottom: '25px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text)', marginBottom: '12px' }}>Accuracy</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+            {subjectAccuracy.map(subj => {
+              const color = subj.weak ? 'var(--red)' : 'var(--green)';
+              return (
+                <div key={subj.subject} className="card" style={{ padding: '15px', borderLeft: `4px solid ${color}` }}>
+                  <div style={{ fontSize: '13px', fontWeight: '900', color: 'var(--text)' }}>{subj.subject}</div>
+                  {subj.accuracy !== null && (
+                    <div style={{ fontSize: '24px', fontWeight: '900', color: color, marginTop: '8px' }}>{subj.accuracy}%</div>
+                  )}
+                  <div style={{ fontSize: '11px', color: 'var(--text4)', marginTop: '4px' }}>
+                    {subj.correct}/{subj.attempted} correct
+                  </div>
+                  {subj.weak && (
+                    <div style={{ fontSize: '10px', background: 'rgba(239,68,68,0.1)', color: 'var(--red)', padding: '4px 8px', borderRadius: '4px', marginTop: '8px', display: 'inline-block', fontWeight: '700' }}>
+                      Needs work
                     </div>
                   )}
                 </div>
-              </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Adherence Graph */}
+      {weeklyPlanAdherence.length > 0 && (
+        <div style={{ marginBottom: '25px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text)', marginBottom: '12px' }}>Target Completion</h2>
+          <div className="card" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', height: '120px', overflowX: 'auto', paddingBottom: '4px' }}>
+              {weeklyPlanAdherence.map(day => {
+                const percentage = day.pct !== null ? Math.round(day.pct * 100) : 0;
+                const date = new Date(day.date + 'T00:00:00');
+                return (
+                  <div key={day.date} style={{ minWidth: '30px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '9px', color: 'var(--text4)' }}>
+                      {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </div>
+                    <div style={{
+                      width: '24px',
+                      height: `${Math.max(8, percentage)}%`,
+                      background: percentage >= 70 ? 'var(--green)' : percentage >= 40 ? 'var(--accent)' : 'var(--text4)',
+                      borderRadius: '4px'
+                    }} />
+                    {percentage > 0 && (
+                      <div style={{ fontSize: '9px', color: 'var(--text4)', fontWeight: '700' }}>{percentage}%</div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

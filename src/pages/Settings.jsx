@@ -4,12 +4,13 @@ import { useShallow } from 'zustand/react/shallow'
 import { useToast } from '../Toast'
 import { exportToExcel } from '../services/excelService'
 import { DEFAULT_CDS_TIMETABLE } from '../data'
-import { getTodayStr } from '../utils/tacticalEngine'
+import { getTodayISO } from '../utils/dateUtils'
 
 export default function Settings() {
   const { 
     settings, syncStatus, zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks,
-    zh_examList, setExamList, zh_weeklyTimetable, setWeeklyTimetable
+    exams, addExam, updateExam, removeExam,
+    zh_weeklyTimetable, setWeeklyTimetable
   } = useAppStore(
     useShallow(s => ({
       settings: s.settings,
@@ -18,8 +19,10 @@ export default function Settings() {
       zh_topicMap: s.zh_topicMap,
       zh_mocks: s.zh_mocks,
       zh_weeklyChecks: s.zh_weeklyChecks,
-      zh_examList: s.zh_examList,
-      setExamList: s.setExamList,
+      exams: s.exams,
+      addExam: s.addExam,
+      updateExam: s.updateExam,
+      removeExam: s.removeExam,
       zh_weeklyTimetable: s.zh_weeklyTimetable,
       setWeeklyTimetable: s.setWeeklyTimetable
     }))
@@ -53,9 +56,6 @@ export default function Settings() {
     if (resetOptions.mocks) { store.setZhMocks([]); toast('Mocks cleared', 'info') }
     if (resetOptions.sitrep) { store.setWeeklyChecks([]); toast('SITREP history cleared', 'info') }
     if (resetOptions.revision) {
-      // Assuming revision queue is derived from zh_topicMap, 
-      // but if there's a specific key, reset it. 
-      // For now, if we reset topics, revision is reset.
       toast('Revision Queue reset (via Topic Map)', 'info')
     }
 
@@ -87,7 +87,7 @@ export default function Settings() {
 
   function handleExportJSON() {
     const d = JSON.stringify({ 
-      zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks, settings
+      zh_sessions, zh_topicMap, zh_mocks, zh_weeklyChecks, settings, exams
     }, null, 2)
     const el = document.createElement('a')
     el.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(d)
@@ -96,46 +96,23 @@ export default function Settings() {
     toast('📁 JSON backup downloaded', 'ok')
   }
 
-  const handleExamNameChange = (id, name) => {
-    const updated = zh_examList.map(e => e.id === id ? { ...e, name } : e);
-    setExamList(updated);
-  };
-
-  const handleExamDateChange = (id, date) => {
-    const updated = zh_examList.map(e => e.id === id ? { ...e, date } : e);
-    setExamList(updated);
-  };
-
-  const handleExamActiveChange = (id, active) => {
-    const updated = zh_examList.map(e => e.id === id ? { ...e, active } : e);
-    setExamList(updated);
-  };
-
   const handleAddCustomExam = () => {
-    const newExam = {
-      id: `custom_${Date.now()}`,
-      name: 'Custom Exam',
+    addExam({
+      label: 'New Exam',
       date: '',
-      active: true,
-      isSystem: false
-    };
-    setExamList([...zh_examList, newExam]);
-  };
+      subjects: ['Maths', 'English']
+    })
+  }
 
-  const handleRemoveCustomExam = (id) => {
-    const updated = zh_examList.filter(e => e.id !== id);
-    setExamList(updated);
-  };
-
-  const today = getTodayStr();
+  const today = getTodayISO()
   const sortedExamList = useMemo(() => {
-    const allExams = [...(zh_examList || [])];
+    const allExams = [...(exams || [])]
     const examsWithDates = allExams
       .filter(e => e.date)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    const examsWithoutDates = allExams.filter(e => !e.date);
-    return [...examsWithDates, ...examsWithoutDates];
-  }, [zh_examList]);
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+    const examsWithoutDates = allExams.filter(e => !e.date)
+    return [...examsWithDates, ...examsWithoutDates]
+  }, [exams])
 
   const handleTemplateChange = (e) => {
     const value = e.target.value;
@@ -174,7 +151,7 @@ export default function Settings() {
         });
       }
     }
-  };
+  }
 
   const handleSubjectTargetChange = (sub, val) => {
     store.setSettings({
@@ -212,27 +189,15 @@ export default function Settings() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {sortedExamList.map(ex => (
             <div key={ex.id} className="card" style={{ padding: 12, background: 'var(--bg3)', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* Active Toggle */}
-              <input 
-                type="checkbox" 
-                checked={ex.active} 
-                onChange={(e) => handleExamActiveChange(ex.id, e.target.checked)} 
-                style={{ cursor: 'pointer' }}
-              />
-              
-              {/* Exam Name Input */}
+              {/* Exam Label Input */}
               <div style={{ flex: 2, minWidth: 150 }}>
-                {ex.isSystem ? (
-                  <span style={{ fontWeight: 'bold', fontSize: 13, color: '#fff' }}>{ex.name} <span style={{ fontSize: 9, color: 'var(--text4)' }}>(SYSTEM)</span></span>
-                ) : (
-                  <input 
-                    type="text" 
-                    className="inp" 
-                    style={{ fontSize: 12, padding: '4px 8px' }} 
-                    value={ex.name} 
-                    onChange={(e) => handleExamNameChange(ex.id, e.target.value)} 
-                  />
-                )}
+                <input 
+                  type="text" 
+                  className="inp" 
+                  style={{ fontSize: 12, padding: '4px 8px' }} 
+                  value={ex.label} 
+                  onChange={(e) => updateExam(ex.id, { label: e.target.value })} 
+                />
               </div>
 
               {/* Exam Date Input */}
@@ -242,7 +207,7 @@ export default function Settings() {
                   className="inp" 
                   style={{ fontSize: 12, padding: '4px 8px' }} 
                   value={ex.date || ''} 
-                  onChange={(e) => handleExamDateChange(ex.id, e.target.value)} 
+                  onChange={(e) => updateExam(ex.id, { date: e.target.value })} 
                 />
               </div>
 
@@ -253,16 +218,14 @@ export default function Settings() {
                 </div>
               )}
 
-              {/* Remove Button for Custom Exams */}
-              {!ex.isSystem && (
-                <button 
-                  className="btn btn-red" 
-                  style={{ padding: '4px 8px', fontSize: 10 }}
-                  onClick={() => handleRemoveCustomExam(ex.id)}
-                >
-                  🗑 Remove
-                </button>
-              )}
+              {/* Remove Button */}
+              <button 
+                className="btn btn-red" 
+                style={{ padding: '4px 8px', fontSize: 10 }}
+                onClick={() => removeExam(ex.id)}
+              >
+                🗑 Remove
+              </button>
             </div>
           ))}
         </div>
