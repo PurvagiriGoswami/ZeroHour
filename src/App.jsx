@@ -5,7 +5,6 @@ import { SideMenu } from './components/Nav'
 import Header from './components/Header'
 import Skeleton from './components/Skeleton'
 import ErrorBoundary from './components/ErrorBoundary'
-import Onboarding from './pages/Onboarding'
 import Login from './pages/Login'
 
 // Lazy loaded pages (New Unified System)
@@ -50,23 +49,12 @@ export default function App() {
   const hasHydrated = useAppStore(s => s.hasHydrated)
   
   const [isInitialLoad, setIsInitialLoad] = useState(true)
-  const [showOnboarding, setShowOnboarding] = useState(false)
   const [isMenuCollapsed, setIsMenuCollapsed] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => 
     typeof window !== 'undefined' ? window.innerWidth <= 1024 : false
   )
   const [tab, setTab] = useState('hq')
-
-  // Check onboarding status
-  useEffect(() => {
-    if (hasHydrated && user) {
-      const onboardingComplete = localStorage.getItem('zh_onboarding_complete') === 'true';
-      if (!onboardingComplete) {
-        setShowOnboarding(true);
-      }
-    }
-  }, [hasHydrated, user])
 
   // Handle Resize
   useEffect(() => {
@@ -102,7 +90,6 @@ export default function App() {
 
   if (isInitialLoad || !hasHydrated) return <Skeleton type="full" />
   if (!user) return <Login />
-  if (showOnboarding) return <Onboarding onComplete={() => setShowOnboarding(false)} />
 
   return (
     <div className={`app-shell ${isMenuCollapsed ? 'collapsed' : ''} ${isMobile ? 'mobile' : ''}`}>
